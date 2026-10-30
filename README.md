@@ -8,14 +8,15 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phases 0 to 3 are complete:
+Phases 0 to 4 are complete:
 
 - tooling;
 - the Black-Scholes-Merton reference engine (European prices and Greeks);
 - binomial trees (CRR, Leisen-Reimer, BBS, BBSR) with American exercise, and Monte Carlo with antithetic and control variates;
-- implied-volatility solvers (Brent, naive and safeguarded Newton) with Let's Be Rational as the oracle, and the finite-difference bump study.
+- implied-volatility solvers (Brent, naive and safeguarded Newton) with Let's Be Rational as the oracle, and the finite-difference bump study;
+- Study A, the accuracy of those solvers across the (log-moneyness, total-volatility) plane.
 
-Phase 4 (Study A: implied-volatility solver accuracy) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
+Phase 5 (Study B: American-option tree convergence) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
 
 ## Usage
 
@@ -158,6 +159,11 @@ Validation so far (studies A and B have not run yet):
 - **Trees vs QuantLib:** Leisen-Reimer matches QuantLib's to 8.4e-12 relative. CRR differs by the O(1/N) error because QuantLib uses a different up-probability convention; with that convention substituted, ours matches to 8.1e-12. Details: [`docs/notes/phase_2_numerical_methods.md`](docs/notes/phase_2_numerical_methods.md).
 - **Implied volatility** (SPEC §6.4 grid, 520 cases): the safeguarded Newton and Brent solvers recover every well-posed case to within a few eps x the price's rounding error divided by vega. Naive Newton fails on 202 of them and reports each failure; no solver ever returns an unconverged value. Details: [`docs/notes/phase_3_iv_and_fd.md`](docs/notes/phase_3_iv_and_fd.md).
 - **Finite-difference Greeks:** the error traces the predicted V in bump size, with truncation slope +2.00 for every Greek. The best bump lies within a factor of 2.1 of the refined prediction, and within a factor of 4 of the textbook rule eps^(1/3). Figures, including 3D error surfaces: [`experiments/results/figures/`](experiments/results/figures/); details: [`docs/notes/phase_3_bump_study.md`](docs/notes/phase_3_bump_study.md).
+- **Study A, implied-volatility solvers** (5880 problems, 50-digit targets):
+  - Let's Be Rational is as accurate as conditioning allows wherever the price carries information: median 1 ulp, 99th-percentile normalized error 1.99, in 2 iterations.
+  - Our safeguarded Newton converges everywhere Brent does, with fewer iterations (median 9 vs 12). Near the money at small volatility, cancellation in the price formula costs it accuracy (median normalized error 683).
+  - The SPEC's well-posedness rule mislabels points in both directions. A conditioning-based rule fixes it; it was applied post hoc and is labelled as such.
+  - Details and figures: [`docs/notes/study_a.md`](docs/notes/study_a.md).
 - **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000; at n = 100 deep out of the money it drops to 0.83. Control variates cut the cost of a given accuracy 44-fold in the money, but only 1.2-fold deep out of the money. Details: [`docs/notes/phase_2_mc_coverage.md`](docs/notes/phase_2_mc_coverage.md).
 
 ## What this project does not claim

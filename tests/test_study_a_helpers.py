@@ -13,6 +13,8 @@ EPS = 2.220446049250313e-16
 # truth() rounds a 50-digit value once: within half an ulp of the float64 BSM price up to that
 # price's own rounding (Phase 1 model, a few eps relative for this at-the-money case).
 TRUTH_RTOL = 64 * EPS
+# At the money kappa = 1 + s^2 / 12 + O(s^4): 1 + 8e-10 at s = 1e-4, well inside 1e-6.
+KAPPA_ATM_RTOL = 1e-6
 
 
 def test_grid_matches_spec_10() -> None:
@@ -38,7 +40,7 @@ def test_truth_matches_bsm_and_kappa_definition() -> None:
         rel=TRUTH_RTOL,
     )
     # At the money kappa = c / (s F phi(s/2)); for small s c ~ F s phi(0), so kappa -> 1.
-    assert truth(1, 100.0, 100.0, 1e-4, 50)["kappa"] == pytest.approx(1.0, rel=1e-6)
+    assert truth(1, 100.0, 100.0, 1e-4, 50)["kappa"] == pytest.approx(1.0, rel=KAPPA_ATM_RTOL)
 
 
 def test_well_posed_threshold() -> None:

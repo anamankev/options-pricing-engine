@@ -258,7 +258,7 @@ Every tolerance is a named constant with a justification. Use scale-aware bounds
   - `e_ulp = |s_hat - s_true| / np.spacing(s_true)`
   - Relative condition number `kappa = |c / (s * dc/ds)|`; attainable relative error ≈ kappa * eps. Normalized error `e_norm = (|s_hat - s_true| / s_true) / (kappa * eps)`. e_norm = O(1) means the solver is as accurate as the problem permits.
   - Iterations; median wall time per solve over 50 repeats after warm-up; failure class.
-- Points where c underflows or c < eps * max(F, K) are classified ill-posed and reported separately.
+- Points where c underflows or c < eps * max(F, K) are classified ill-posed and reported separately. Phase 4 finding (`docs/notes/study_a.md`): this rule measures the wrong quantity. In-the-money prices whose time value is lost in rounding count as well posed although they carry no information about s, and deep out-of-the-money prices below eps max(F, K) count as ill posed although they are fully informative. The informative region, a normal float target with kappa eps < 1, classifies correctly. It was used post hoc and should be registered for any rerun. Study A also floored kappa at 1 in e_norm (registered), since one ulp of s is the floor for any method.
 
 **Hypotheses (write in `docs/notes/study_a.md` and commit before running).**
 - A1: Naive Newton fails (diverges, cycles, or hits the cap) on a substantial region at small s and large |x|.
