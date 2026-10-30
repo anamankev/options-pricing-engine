@@ -42,6 +42,9 @@ EPS = 2.220446049250313e-16
 # LBR on a clean R1 price: Jaeckel (2015) reports full double-precision accuracy; the price itself
 # carries a few eps of rounding, so 64 eps relative is a generous check of the convention.
 LBR_R1_RTOL = 64 * EPS
+# Passing the discounted price (5% lower here, e^{-0.05}) gives sigma = 0.1726 instead of 0.20; a
+# 0.01 gap separates the conventions with ~3x margin.
+WRONG_CONVENTION_MIN_GAP = 0.01
 # Phase 1 price rounding model factor (tests/test_black_scholes.py).
 VOLLIB_ROUNDING_FACTOR = 64
 
@@ -275,7 +278,7 @@ def test_lbr_signature_and_price_convention() -> None:
     assert sigma == pytest.approx(0.20, rel=LBR_R1_RTOL)
     # Passing the discounted price instead gives a different volatility: the convention matters.
     wrong = lbr_implied_volatility(OptionType.CALL, discounted, F=F, K=K, T=T)
-    assert abs(wrong - 0.20) > 0.01
+    assert abs(wrong - 0.20) > WRONG_CONVENTION_MIN_GAP
     # q = -1 for puts.
     put = float(bs.price(OptionType.PUT, S=S, K=K, T=T, r=r, q=0.0, sigma=0.20))
     assert lbr_implied_volatility(OptionType.PUT, put / D, F=F, K=K, T=T) == pytest.approx(

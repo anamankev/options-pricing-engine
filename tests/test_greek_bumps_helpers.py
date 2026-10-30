@@ -11,6 +11,8 @@ from pricing.contracts import OptionType
 EPS = 2.220446049250313e-16
 # A least-squares slope over exact powers: a few roundings of logs and dot products.
 FIT_TOL = 64 * EPS
+# One subtraction, abs and division: within 8 ulps.
+METRIC_RTOL = 8 * EPS
 
 
 def test_eta_grid_is_half_decades_from_1e_minus_1_to_1e_minus_12() -> None:
@@ -26,7 +28,7 @@ def test_slope_recovers_an_exact_power_law() -> None:
 
 
 def test_relative_error_definition() -> None:
-    assert relative_error(1.1, 1.0) == pytest.approx(0.1, rel=8 * EPS)
+    assert relative_error(1.1, 1.0) == pytest.approx(0.1, rel=METRIC_RTOL)
 
 
 def test_theta_finite_difference_has_the_spec_sign() -> None:

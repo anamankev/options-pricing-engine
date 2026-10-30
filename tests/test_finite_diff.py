@@ -22,6 +22,8 @@ FIRST_ROUNDING_TOL = 2e-11
 SECOND_ROUNDING_TOL = 1e-8
 # At the optimal step on exp, predicted total error is ~1e-10 relative; 1e-9 allows 10x.
 OPTIMAL_STEP_RTOL = 1e-9
+# Three-point weights applied to f(t) = t: a few roundings of quotients of the steps.
+WEIGHTS_TOL = 4 * EPS
 
 
 def test_relative_step_scales_with_x_and_floors_at_x_scale() -> None:
@@ -104,7 +106,7 @@ def test_three_point_forward_difference_error_is_minus_h_squared_f3_over_3() -> 
 def test_one_sided_differences_use_the_steps_actually_taken() -> None:
     x, h = 0.1, 1e-7  # x + h is rounded (see test_divides_by_the_step_actually_taken)
     assert forward_first(lambda t: t, x, h) == 1.0
-    assert forward_first_order2(lambda t: t, x, h) == pytest.approx(1.0, abs=4 * EPS)
+    assert forward_first_order2(lambda t: t, x, h) == pytest.approx(1.0, abs=WEIGHTS_TOL)
 
 
 def test_one_sided_differences_only_look_forward() -> None:

@@ -8,7 +8,14 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phases 0 to 2 are complete: tooling; the Black-Scholes-Merton reference engine (European prices and Greeks); binomial trees (CRR, Leisen-Reimer, BBS, BBSR) with American exercise, and Monte Carlo with antithetic and control variates. Phase 3 (implied-volatility solvers, finite-difference bump study) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
+Phases 0 to 3 are complete:
+
+- tooling;
+- the Black-Scholes-Merton reference engine (European prices and Greeks);
+- binomial trees (CRR, Leisen-Reimer, BBS, BBSR) with American exercise, and Monte Carlo with antithetic and control variates;
+- implied-volatility solvers (Brent, naive and safeguarded Newton) with Let's Be Rational as the oracle, and the finite-difference bump study.
+
+Phase 4 (Study A: implied-volatility solver accuracy) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
 
 ## Usage
 
@@ -53,6 +60,17 @@ res = monte_carlo(
     pilot_paths=10_000,
 )
 res.estimate, res.std_error, (res.ci_low, res.ci_high)
+```
+
+```python
+from pricing import black_scholes as bs
+from pricing.contracts import OptionType
+from pricing.implied_vol import implied_volatility, implied_volatility_result
+
+market = dict(S=42.0, K=40.0, T=0.5, r=0.10, q=0.0)
+price = bs.price(OptionType.CALL, **market, sigma=0.20)
+implied_volatility(OptionType.CALL, price, **market)  # 0.20000000000000015, i.e. 0.2 to 1 ulp
+implied_volatility_result(OptionType.CALL, price, **market).iterations  # full diagnostics
 ```
 
 Market inputs are keyword-only, so r and q cannot be swapped by position. Arrays broadcast like NumPy and return arrays; scalars return a float. Invalid inputs raise `PricingInputError` naming the parameter, and Greeks that do not exist (for example delta at expiry with S = K) raise `UndefinedGreekError`.
@@ -117,7 +135,8 @@ Full table: SPEC §2. In short: volatility `sigma` is an annualized decimal (0.2
 ## Layout
 
 ```
-src/pricing/      library: contracts, errors, black_scholes, binomial, monte_carlo, finite_diff, oracles
+src/pricing/      library: contracts, errors, black_scholes, binomial, monte_carlo, implied_vol,
+                  finite_diff, oracles
 tests/            pytest suite; conftest.py holds the Hypothesis profiles
 docs/SPEC.md      technical standard
 docs/notes/       research notes (template: TEMPLATE.md)
@@ -137,6 +156,8 @@ Validation so far (studies A and B have not run yet):
 - **Against QuantLib 1.44, 1800 cases:** median relative agreement is 2e-16 to 1e-15. In far tails (|d1| >= 3.2) QuantLib loses relative precision, up to 100% against the exact value, while this library stays within 2.5e-10. Details: [`docs/notes/phase_1_quantlib_reconciliation.md`](docs/notes/phase_1_quantlib_reconciliation.md).
 - **American options:** all 18 Ju and Zhong (1999) benchmark values are reproduced within 2e-3 by two methods (Leisen-Reimer, N = 2001; BBSR, N = 2048). QuantLib's high-precision American engine agrees with BBSR at N = 16384 within 1.5e-6.
 - **Trees vs QuantLib:** Leisen-Reimer matches QuantLib's to 8.4e-12 relative. CRR differs by the O(1/N) error because QuantLib uses a different up-probability convention; with that convention substituted, ours matches to 8.1e-12. Details: [`docs/notes/phase_2_numerical_methods.md`](docs/notes/phase_2_numerical_methods.md).
+- **Implied volatility** (SPEC §6.4 grid, 520 cases): the safeguarded Newton and Brent solvers recover every well-posed case to within a few eps x the price's rounding error divided by vega. Naive Newton fails on 202 of them and reports each failure; no solver ever returns an unconverged value. Details: [`docs/notes/phase_3_iv_and_fd.md`](docs/notes/phase_3_iv_and_fd.md).
+- **Finite-difference Greeks:** the error traces the predicted V in bump size, with truncation slope +2.00 for every Greek. The best bump lies within a factor of 2.1 of the refined prediction, and within a factor of 4 of the textbook rule eps^(1/3). Figures, including 3D error surfaces: [`experiments/results/figures/`](experiments/results/figures/); details: [`docs/notes/phase_3_bump_study.md`](docs/notes/phase_3_bump_study.md).
 - **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000; at n = 100 deep out of the money it drops to 0.83. Control variates cut the cost of a given accuracy 44-fold in the money, but only 1.2-fold deep out of the money. Details: [`docs/notes/phase_2_mc_coverage.md`](docs/notes/phase_2_mc_coverage.md).
 
 ## What this project does not claim
