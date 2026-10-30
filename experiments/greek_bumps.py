@@ -257,61 +257,84 @@ def _style(ax: Any) -> None:
         spine.set_color(GRID)
 
 
+def _end_labels(ax: Any, items: list[tuple[str, float, float]]) -> None:
+    """Direct labels just right of each line's last point, spaced so none overlap and centred
+    on the points they label."""
+    low, high = (math.log10(v) for v in ax.get_ylim())
+    gap = 0.04 * (high - low)  # minimum vertical spacing, in log10 units
+    ordered = sorted(items, key=lambda item: item[2])
+    targets = [math.log10(y) for _, _, y in ordered]
+    levels: list[float] = []
+    for target in targets:
+        levels.append(max(target, levels[-1] + gap) if levels else target)
+    shift = sum(targets) / len(targets) - sum(levels) / len(levels)  # recentre the stack
+    for (text, x, _), level in zip(ordered, levels, strict=True):
+        ax.annotate(
+            text,
+            (x, 10.0 ** (level + shift)),
+            xytext=(8, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=9,
+            color=INK,
+        )
+
+
+def _reference_line(ax: Any, x: float, text: str, *, linestyle: str, side: str) -> None:
+    """A vertical reference line, labelled in the empty band at the top of the plot."""
+    ax.axvline(x, color=INK_2, linewidth=1, linestyle=linestyle)
+    ax.annotate(
+        text,
+        (x, 0.98),
+        xycoords=("data", "axes fraction"),
+        xytext=(-4 if side == "left" else 4, 0),
+        textcoords="offset points",
+        ha="right" if side == "left" else "left",
+        va="top",
+        fontsize=8,
+        color=INK_2,
+    )
+
+
 def plot_vshape(
     config: dict[str, Any], data: dict[str, Any], analysis: dict[str, Any], path: Path
 ) -> None:
-    fig, ax = plt.subplots(figsize=(8.5, 5.5), facecolor=SURFACE)
+    fig, ax = plt.subplots(figsize=(9.0, 5.5), facecolor=SURFACE)
     _style(ax)
     etas = data["etas"]
     for greek in GREEKS:
-        errs = data["main"][greek]
         ax.loglog(
             etas,
-            errs,
+            data["main"][greek],
             color=SERIES[greek],
             linewidth=2,
             marker=MARKERS[greek],
             markersize=5,
             label=greek,
         )
-        ax.annotate(
-            greek,
-            (etas[0], errs[0]),
-            xytext=(6, 0),
-            textcoords="offset points",
-            va="center",
-            fontsize=9,
-            color=INK,
-        )
-    for kind, label in (
-        ("first", "predicted optimum, first derivatives  eps^(1/3)"),
-        ("second", "predicted optimum, gamma  eps^(1/4)"),
-    ):
-        ax.axvline(
-            PREDICTED[kind], color=INK_2, linewidth=1, linestyle="--" if kind == "first" else ":"
-        )
-        ax.annotate(
-            label,
-            (PREDICTED[kind], 0.5),
-            xycoords=("data", "axes fraction"),
-            rotation=90,
-            fontsize=8,
-            color=INK_2,
-            ha="right",
-            va="center",
-        )
+    ax.set_xlim(etas[-1] / 2, etas[0] * 12)
+    _end_labels(ax, [(g, etas[0], data["main"][g][0]) for g in GREEKS])
+    _reference_line(
+        ax,
+        PREDICTED["first"],
+        "predicted optimum,\nfirst derivatives (eps^1/3)",
+        linestyle="--",
+        side="left",
+    )
+    _reference_line(
+        ax, PREDICTED["second"], "predicted optimum,\ngamma (eps^1/4)", linestyle=":", side="right"
+    )
     ax.set_xlabel("relative bump size eta  (h = eta x max(|x|, 1))", color=INK)
     ax.set_ylabel("relative error vs analytic Greek", color=INK)
     m = config["market"]
     ax.set_title(
-        f"Finite-difference error vs bump size: call, S = K = {m['K']:g}, T = {m['T']:g}, "
-        f"sigma = {m['sigma']:g}",
+        f"Finite-difference error vs bump size: call, S = K = {m['K']:g}, "
+        f"T = {m['T']:g}, sigma = {m['sigma']:g}",
         color=INK,
         fontsize=11,
         loc="left",
     )
     ax.legend(frameon=False, fontsize=9, loc="lower left", labelcolor=INK)
-    ax.set_xlim(etas[-1] / 2, etas[0] * 6)
     fig.tight_layout()
     fig.savefig(path, dpi=150, facecolor=SURFACE)
     plt.close(fig)
@@ -334,7 +357,7 @@ def plot_surface(
         ax.set_xlabel("log10 eta", color=INK, fontsize=9)
         ax.set_ylabel("spot S", color=INK, fontsize=9)
         ax.set_zlabel("log10 relative error", color=INK, fontsize=9)
-        ax.set_title(f"{greek}: error surface", color=INK, fontsize=11)
+        ax.set_title(f"{greek}: error surface (lighter = smaller error)", color=INK, fontsize=11)
         ax.view_init(elev=28, azim=-60)
         ax.tick_params(colors=INK_2, labelsize=8)
     fig.tight_layout()
@@ -348,29 +371,32 @@ def plot_surface(
         ax.set_xlabel("log10 eta", color=INK)
         ax.set_ylabel("spot S", color=INK)
         ax.set_title(
-            f"{greek}: log10 relative error (same data as the 3D view)",
+            f"{greek}: same data as the 3D view; dashed line = predicted optimum",
             color=INK,
             fontsize=10,
             loc="left",
         )
         ax.tick_params(colors=INK_2, labelsize=9)
         ax.axvline(math.log10(PREDICTED[order(greek)]), color=INK, linewidth=1, linestyle="--")
-        fig.colorbar(mesh, ax=ax).ax.tick_params(colors=INK_2, labelsize=8)
+        bar = fig.colorbar(mesh, ax=ax)
+        bar.set_label("log10 relative error", color=INK, fontsize=9)
+        bar.ax.tick_params(colors=INK_2, labelsize=8)
     fig.tight_layout()
     fig.savefig(path_2d, dpi=150, facecolor=SURFACE)
     plt.close(fig)
 
 
 def plot_one_sided(config: dict[str, Any], data: dict[str, Any], path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(8.5, 5.0), facecolor=SURFACE)
+    fig, ax = plt.subplots(figsize=(9.0, 5.0), facecolor=SURFACE)
     _style(ax)
     etas = data["etas"]
     styles = {
-        "forward_first": ("#2a78d6", "o", "forward, first order (one-sided)"),
-        "forward_order2": ("#eb6834", "s", "forward, three-point (one-sided)"),
-        "central": ("#1baf7a", "^", "central (needs T - h > 0)"),
+        "forward_first": ("#2a78d6", "o", "forward, first order", "one-sided, first order"),
+        "forward_order2": ("#eb6834", "s", "forward, three-point", "one-sided, three-point"),
+        "central": ("#1baf7a", "^", "central", "central (needs T - h > 0)"),
     }
-    for method, (color, marker, label) in styles.items():
+    labels = []
+    for method, (color, marker, short, long) in styles.items():
         pts = [
             (e, err)
             for e, err in zip(etas, data["one_sided"][method], strict=True)
@@ -382,28 +408,14 @@ def plot_one_sided(config: dict[str, Any], data: dict[str, Any], path: Path) -> 
             marker=marker,
             linewidth=2,
             markersize=5,
-            label=label,
+            label=long,
         )
-        ax.annotate(
-            label.split(",")[0].split(" (")[0],
-            pts[0],
-            xytext=(6, 0),
-            textcoords="offset points",
-            fontsize=8,
-            color=INK,
-            va="center",
-        )
+        labels.append((short, pts[0][0], pts[0][1]))
+    ax.set_xlim(etas[-1] / 2, etas[0] * 25)
+    _end_labels(ax, labels)
     T = config["short_maturity"]["T"]
-    ax.axvline(T, color=INK_2, linewidth=1, linestyle="--")
-    ax.annotate(
-        "h = T: central difference unavailable to the right",
-        (T, 0.5),
-        xycoords=("data", "axes fraction"),
-        rotation=90,
-        fontsize=8,
-        color=INK_2,
-        ha="right",
-        va="center",
+    _reference_line(
+        ax, T, "h = T: no central\ndifference to the right", linestyle="--", side="left"
     )
     ax.set_xlabel("relative bump size eta  (h = eta, since T < 1)", color=INK)
     ax.set_ylabel("relative error of theta", color=INK)
