@@ -3,4 +3,4 @@
 Standard: docs/SPEC.md. Units, signs and Greek conventions: SPEC section 2.
 """
 
-__version__ = "0.0.0"
+__version__ = "1.0.0"
