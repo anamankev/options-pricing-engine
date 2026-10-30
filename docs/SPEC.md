@@ -185,7 +185,7 @@ Intrinsic `iota = max(theta_cp (F - K), 0)`; upper bound `F` (call) or `K` (put)
 1. **Brent (baseline):** bracket [0, s_hi], s_hi doubling from 1.0 until `c(s_hi) > c_target`, capped at s_max = 20 (else BRACKET_FAILURE). `scipy.optimize.brentq` with `xtol=1e-15`, `rtol=4*eps`, `maxiter=200`, `full_output=True`.
 2. **Naive Newton:** start s0 = 0.2 sqrt(T), no safeguards, cap 100 iterations. Exists to be measured, not used in production paths.
 3. **Safeguarded Newton:** Manaster-Koehler start `s0 = sqrt(2 |x|)`; if `|x| < 1e-8` use `s0 = 0.2 sqrt(T)`. Maintain a sign bracket. Take the Newton step only if it stays inside the bracket, `dc/ds > vega_min` (named constant, justified), and (Phase 3 amendment) it is less than half the previous step, the progress test of Numerical Recipes' rtsafe; otherwise bisect. Without the progress test, 30 of the 520 §6.4 round-trip cases hit the iteration cap: deep out of the money, Newton crawls inside the bracket because c / c' ~ s^3 / x^2. Converge when `|c(s) - c_target| <= 4 eps c_target` or bracket width `<= 4 eps s`.
-4. **Oracle:** Jäckel's Let's Be Rational via `py_lets_be_rational` (MIT). Expected call: `implied_volatility_from_a_transformed_rational_guess(price, F, K, T, q)` with undiscounted price and q = +1 call, -1 put. Confirm the signature and conventions in a test before relying on it.
+4. **Oracle:** Jäckel's Let's Be Rational via `lets_be_rational` (MIT; Phase 3 chose it over the identical `py_lets_be_rational`). Expected call: `implied_volatility_from_a_transformed_rational_guess(price, F, K, T, q)` with undiscounted price and q = +1 call, -1 put. Confirm the signature and conventions in a test before relying on it.
 
 ### 6.4 Tests
 Round trip price to IV to price over x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 5}, sigma in {0.01, 0.2, 1.0, 3.0}; infeasible prices; AT_LOWER_BOUND; iteration-cap behavior; deep OTM low-vega cases.
@@ -206,7 +206,7 @@ Round trip price to IV to price over x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 
 - American: `QdFpAmericanEngine` (Andersen-Lake-Offengenden) high-precision scheme as the Study B oracle. Available in QuantLib 1.44 as `QdFpAmericanEngine(process, QdFpAmericanEngine.highPrecisionScheme())`, for puts and calls (Phase 2): it reproduces Ju-Zhong R4 to R6 within 6.4e-4 and agrees with BBSR at N = 16384 within 1.5e-6 (`tests/test_oracles.py`). Fallback if it ever disappears: BBSR at N = 2^15 cross-checked with LR at N = 32769, agreement < 1e-6.
 - `BinomialVanillaEngine` ("crr", N) cross-checks our CRR at identical N. Phase 2 finding: the expectation of agreement near machine precision is refuted as written. QuantLib's CRR up-probability is the log-drift approximation 1/2 + (1/2)(r - q - sigma^2/2) sqrt(dt) / sigma, not §4.1's martingale probability, so the prices differ by O(1/N) (at least 2e-9 relative on the test grid). With QuantLib's probability substituted, our backward induction reproduces it within 8.1e-12 relative. `BinomialVanillaEngine` ("lr", N) uses §4.2's formulas and matches our LR within 8.4e-12.
 
-### 8.2 vollib and py_lets_be_rational
+### 8.2 vollib and lets_be_rational
 Second implementation for BSM prices and the IV oracle (§6.3). Pin versions. `vollib` is the current name of `py_vollib`: since 1.0.12, `py_vollib` is a shim whose import raises `DeprecationWarning` (Phase 0 finding, 30 October 2026).
 
 ### 8.3 mpmath
@@ -241,7 +241,7 @@ Tolerance for R4 to R6: `abs(err) < 2e-3` (published to 3 decimals and themselve
 | Cross-method | Trees and MC vs BSM; American >= European; American call = European call only under §4.4 conditions |
 | Solver | §6.4 |
 | Input validation | NaN, inf, S <= 0, K <= 0, T < 0, sigma < 0, bad shapes |
-| Oracle | QuantLib and py_lets_be_rational reconciliation (`@pytest.mark.oracle`) |
+| Oracle | QuantLib, lets_be_rational and vollib reconciliation (`@pytest.mark.oracle`) |
 | Statistical | MC coverage and SE scaling (`@pytest.mark.statistical`, fixed seeds) |
 
 ### 9.3 Tolerance policy
@@ -311,7 +311,7 @@ options-pricing-engine/
 ```
 
 ### 13.2 Tooling (all free)
-Python 3.11+; NumPy, SciPy, Matplotlib, mpmath; pytest, Hypothesis, pytest-benchmark; Ruff; mypy (strict on `src/`); QuantLib, py_lets_be_rational, vollib for oracles. Constrain versions in `pyproject.toml` (e.g. `numpy>=2.0,<3`); record exact versions in every experiment output.
+Python 3.11+; NumPy, SciPy, Matplotlib, mpmath; pytest, Hypothesis, pytest-benchmark; Ruff; mypy (strict on `src/`); QuantLib, lets_be_rational, vollib for oracles. Constrain versions in `pyproject.toml` (e.g. `numpy>=2.0,<3`); record exact versions in every experiment output.
 
 ### 13.3 CI
 GitHub Actions on a public repository (free for standard hosted runners). Push and pull request: Ruff, mypy, fast tests on Python 3.11 and 3.12. Manual `workflow_dispatch`: full suite including slow, statistical, and oracle tests.
@@ -363,7 +363,7 @@ Record exact page or equation numbers in docstrings and notes for every formula 
 - R2, R3 (Haug) and R4b (Ju-Zhong 0.852): reproduced numerically during spec review; confirm printed values in the primary sources if copies are available.
 - Hull edition and page for R1.
 - Resolved in Phase 2: `QdFpAmericanEngine` scheme API (`highPrecisionScheme()`), checked against Ju-Zhong and BBSR (see §8.1).
-- `py_lets_be_rational` function signature and price convention in the installed version. Phase 0 found two installed implementations from the same upstream repository with diverged code: `py_lets_be_rational` 1.1.2 and `lets_be_rational` 1.1.2 (a dependency of `vollib`). Choose one for Study A and pin it (Phase 3).
+- Resolved in Phase 3: Let's Be Rational package and convention. `lets_be_rational` 1.1.2 is used (the copy vollib depends on); `py_lets_be_rational` 1.1.2 gave identical results on 326 points and was dropped. Signature `(price, F, K, T, q)` with the undiscounted price and q = +1 call, -1 put is pinned by `tests/test_oracles.py`.
 - Leisen-Reimer formulas (§4.2): numerically consistent with O(1/N^2); confirm equation numbers in the original paper.
 - Jäckel (2015) test cases, if obtainable, as extra Study A anchors.
 - Citations added in Phase 1, numbering not checked against the books: Press et al., Numerical Recipes, 3rd ed., §5.7 (exact finite-difference steps) and Higham (2002), Theorem 2.5 (Sterbenz's lemma) in `pricing/finite_diff.py`; Hull's chapter on the Greek letters (edition, equation numbers) in `pricing/black_scholes.py`. Added in Phase 2: Glasserman (2004) sections 1.1, 4.1 and 4.2 in `pricing/monte_carlo.py`.

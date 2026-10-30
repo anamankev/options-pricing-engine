@@ -16,6 +16,10 @@ that need T = 0.5 or 0.25 exactly (180 or 90 days).
   tests/test_oracles.py).
 - quantlib_american: QdFpAmericanEngine with its high-precision scheme (Andersen, Lake and
   Offengenden 2016), the Study B reference for American options (SPEC 8.1, 11).
+- lbr_implied_volatility: Jaeckel's "Let's Be Rational" (Jaeckel 2015) through lets_be_rational
+  (SPEC 6.3, 8.2): undiscounted Black price, forward, strike, T, and q = +1 call, -1 put; returns
+  sigma. The signature and price convention are pinned by tests/test_oracles.py.
+- vollib_price: vollib's Black-Scholes-Merton price, a second implementation (SPEC 8.2).
 """
 
 from __future__ import annotations
@@ -24,8 +28,12 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 import QuantLib as ql
+from lets_be_rational import implied_volatility_from_a_transformed_rational_guess
+from lets_be_rational.exceptions import AboveMaximumException, BelowIntrinsicException
+from vollib.black_scholes_merton import black_scholes_merton
 
 from pricing.contracts import ExerciseStyle, OptionType, option_sign
+from pricing.errors import InfeasiblePriceError
 
 EVALUATION_DATE = ql.Date(30, ql.October, 2026)  # fixed, so results do not depend on today
 
@@ -111,6 +119,26 @@ def quantlib_american(
     scheme = ql.QdFpAmericanEngine.highPrecisionScheme()
     option.setPricingEngine(ql.QdFpAmericanEngine(process, scheme))
     return float(option.NPV())
+
+
+def lbr_implied_volatility(
+    option_type: OptionType, c: float, *, F: float, K: float, T: float
+) -> float:
+    """Implied volatility from Let's Be Rational for an undiscounted Black price c (SPEC 6.3)."""
+    q = option_sign(option_type)
+    try:
+        sigma = implied_volatility_from_a_transformed_rational_guess(c, F, K, T, q)
+    except (BelowIntrinsicException, AboveMaximumException) as exc:
+        raise InfeasiblePriceError(f"Let's Be Rational rejected price {c!r}: {exc}") from exc
+    return float(sigma)
+
+
+def vollib_price(
+    option_type: OptionType, *, S: float, K: float, T: float, r: float, q: float, sigma: float
+) -> float:
+    """vollib's Black-Scholes-Merton price (SPEC 8.2)."""
+    flag = "c" if option_sign(option_type) == 1 else "p"
+    return float(black_scholes_merton(flag, S, K, T, r, sigma, q))
 
 
 def _setup(

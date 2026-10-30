@@ -29,7 +29,9 @@ dev = [
 ]
 oracle = [
     "QuantLib>=1.40,<2",
-    "py_lets_be_rational>=1.1,<2",
+    # Let's Be Rational: lets_be_rational, the copy vollib depends on. py_lets_be_rational gave
+    # identical results on 326 test points, so one copy is kept (SPEC 8.2, Phase 3 decision).
+    "lets-be-rational>=1.1.2,<2",
     # vollib is the current name of py_vollib, now a shim that warns on import (SPEC 8.2).
     "vollib>=1.0.11,<2",
 ]
@@ -50,7 +52,7 @@ addopts = "-ra --strict-markers --strict-config"
 markers = [
     "slow: takes more than a few seconds; excluded from the fast subset",
     "statistical: Monte Carlo coverage or scaling check with fixed seeds (SPEC 5.5)",
-    "oracle: reconciliation against QuantLib or py_lets_be_rational; needs the oracle extra",
+    "oracle: reconciliation against QuantLib, Let's Be Rational or vollib; needs the oracle extra",
 ]
 # Any warning fails the test, so a NumPy RuntimeWarning (invalid value, overflow) cannot pass
 # silently. A third-party warning may be ignored here only with a one-line justification.
@@ -76,5 +78,5 @@ warn_unreachable = true
 
 [[tool.mypy.overrides]]
 # No type stubs exist for the oracle packages.
-module = ["QuantLib.*", "py_lets_be_rational.*", "py_vollib.*"]
+module = ["QuantLib.*", "lets_be_rational.*", "vollib.*"]
 ignore_missing_imports = true

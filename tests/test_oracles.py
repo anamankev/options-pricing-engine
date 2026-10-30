@@ -38,6 +38,13 @@ CONFIG = Path(__file__).resolve().parents[1] / "experiments/configs/quantlib_rec
 ORACLE_RTOL = 1e-11
 ORACLE_ABS_EPS_SCALE = 4.0
 
+EPS = 2.220446049250313e-16
+# LBR on a clean R1 price: Jaeckel (2015) reports full double-precision accuracy; the price itself
+# carries a few eps of rounding, so 64 eps relative is a generous check of the convention.
+LBR_R1_RTOL = 64 * EPS
+# Phase 1 price rounding model factor (tests/test_black_scholes.py).
+VOLLIB_ROUNDING_FACTOR = 64
+
 HALF_UNIT_2DP = 0.005  # anchor quoted to 2 decimals
 HALF_UNIT_3DP = 0.0005  # anchor quoted to 3 decimals
 # Far-tail relative accuracy of ours: d^2 amplification at |d1| = 9.2 is ~85 eps; 1e-12 is
@@ -246,3 +253,89 @@ def test_qdfp_agrees_with_bbsr_at_large_n() -> None:
             exercise=ExerciseStyle.AMERICAN,
         )
         assert tree.value == pytest.approx(reference, abs=QDFP_BBSR_ABS_TOL), (S, K, sigma, days)
+
+
+# --- Let's Be Rational (SPEC 6.3, 8.2) ------------------------------------------------------
+
+
+def test_lbr_signature_and_price_convention() -> None:
+    # SPEC 6.3: confirm the signature and conventions before relying on the oracle.
+    import inspect
+
+    from lets_be_rational import implied_volatility_from_a_transformed_rational_guess as lbr
+
+    from pricing.oracles import lbr_implied_volatility
+
+    assert list(inspect.signature(lbr).parameters) == ["price", "F", "K", "T", "q"]
+    # R1 (Hull, Example 15.6): sigma = 0.20. LBR wants the undiscounted price on the forward.
+    S, K, T, r = 42.0, 40.0, 0.5, 0.10
+    discounted = float(bs.price(OptionType.CALL, S=S, K=K, T=T, r=r, q=0.0, sigma=0.20))
+    F, D = S * math.exp(r * T), math.exp(-r * T)
+    sigma = lbr_implied_volatility(OptionType.CALL, discounted / D, F=F, K=K, T=T)
+    assert sigma == pytest.approx(0.20, rel=LBR_R1_RTOL)
+    # Passing the discounted price instead gives a different volatility: the convention matters.
+    wrong = lbr_implied_volatility(OptionType.CALL, discounted, F=F, K=K, T=T)
+    assert abs(wrong - 0.20) > 0.01
+    # q = -1 for puts.
+    put = float(bs.price(OptionType.PUT, S=S, K=K, T=T, r=r, q=0.0, sigma=0.20))
+    assert lbr_implied_volatility(OptionType.PUT, put / D, F=F, K=K, T=T) == pytest.approx(
+        0.20, rel=LBR_R1_RTOL
+    )
+
+
+def test_lbr_rejects_infeasible_prices_with_our_exception() -> None:
+    from pricing.errors import InfeasiblePriceError
+    from pricing.oracles import lbr_implied_volatility
+
+    with pytest.raises(InfeasiblePriceError, match="Let's Be Rational rejected"):
+        lbr_implied_volatility(OptionType.CALL, 15.0, F=100.0, K=80.0, T=1.0)  # below intrinsic
+
+
+def test_lbr_and_safeguarded_newton_recover_the_round_trip_grid() -> None:
+    # Both solvers against the true total volatility on SPEC 6.4's grid, with the accuracy model of
+    # tests/test_implied_vol.py; points at the lower bound are not well posed and are skipped.
+    from pricing import implied_vol as iv
+    from pricing.oracles import lbr_implied_volatility
+    from test_implied_vol import ROUND_TRIP, _allowed_error, _market
+
+    checked = 0
+    for x, T, sigma, option_type in ROUND_TRIP:
+        market = _market(float(x), T)
+        price = float(bs.price(option_type, **market, sigma=sigma))
+        ours = iv.implied_volatility_result(option_type, price, **market)
+        if ours.reason is not iv.IVReason.CONVERGED:
+            continue
+        F = market["S"] * math.exp((market["r"] - market["q"]) * T)
+        c = price / math.exp(-market["r"] * T)
+        s_lbr = lbr_implied_volatility(option_type, c, F=F, K=market["K"], T=T) * math.sqrt(T)
+        s = sigma * math.sqrt(T)
+        allowed = _allowed_error(option_type, float(x), s, iv.IVMethod.SAFEGUARDED_NEWTON)
+        assert abs(s_lbr - s) <= allowed, (x, T, sigma, option_type)
+        checked += 1
+    assert checked > 250  # 306 of 520 are well posed
+
+
+# --- vollib as a second BSM implementation (SPEC 8.2) -------------------------------------
+
+
+def test_vollib_prices_match_ours_within_the_rounding_budget() -> None:
+    # Both implementations carry rounding error up to ROUNDING_FACTOR eps x scale (Phase 1 model),
+    # so they may differ by twice that. Observed worst relative difference: 5e-12, at a 1e-29 price.
+    from pricing.oracles import vollib_price
+
+    for S, T, r, q, sigma, option_type in itertools.product(
+        (70.0, 90.0, 100.0, 110.0, 130.0),
+        (0.1, 1.0, 5.0),
+        (-0.01, 0.05),
+        (0.0, 0.03),
+        (0.1, 0.4, 1.0),
+        (OptionType.CALL, OptionType.PUT),
+    ):
+        market = {"S": S, "K": 100.0, "T": T, "r": r, "q": q, "sigma": sigma}
+        ours = float(bs.price(option_type, **market))
+        theirs = vollib_price(option_type, **market)
+        Sq, Kr = S * math.exp(-q * T), 100.0 * math.exp(-r * T)
+        s = sigma * math.sqrt(T)
+        d1 = math.log(Sq / Kr) / s + s / 2
+        scale = Sq + Kr + Sq * math.exp(-d1 * d1 / 2) / math.sqrt(2 * math.pi) * (2 + 2 * abs(d1))
+        assert abs(ours - theirs) <= 2 * VOLLIB_ROUNDING_FACTOR * EPS * scale, market
