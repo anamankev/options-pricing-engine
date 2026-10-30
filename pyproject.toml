@@ -29,8 +29,8 @@ dev = [
 ]
 oracle = [
     "QuantLib>=1.40,<2",
-    # Let's Be Rational: lets_be_rational, the copy vollib depends on. py_lets_be_rational gave
-    # identical results on 326 test points, so one copy is kept (SPEC 8.2, Phase 3 decision).
+    # Let's Be Rational. This wheel (the one vollib depends on) ships the py_lets_be_rational
+    # implementation plus a lets_be_rational package re-exporting it (SPEC 8.2, 17).
     "lets-be-rational>=1.1.2,<2",
     # vollib is the current name of py_vollib, now a shim that warns on import (SPEC 8.2).
     "vollib>=1.0.11,<2",

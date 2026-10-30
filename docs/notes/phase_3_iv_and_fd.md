@@ -28,7 +28,7 @@ Do the implied-volatility solvers recover volatility as accurately as the price'
   - accuracy: worst error 3.3 x eps x scale / (dc/ds), the price's own rounding propagated through the slope, plus Brent's stopping tolerance for Brent;
   - naive Newton: 104 converged, 182 zero derivative, 16 diverged, 4 hit the cap. Every failure is reported, none returns a value.
 - Lower-bound cases: all 214 are prices whose time value is below rounding or that underflow to 0; the test checks each one.
-- Let's Be Rational: `lets_be_rational` and `py_lets_be_rational` gave identical results on 326 points; the first is kept. Signature `(price, F, K, T, q)` with the undiscounted price, pinned by a test (the discounted price gives 0.1726 instead of 0.20 on R1). It meets the same accuracy bound on every well-posed round-trip point.
+- Let's Be Rational: `lets_be_rational` and `py_lets_be_rational` gave identical results on 326 points; the first is kept. (Phase 4 found why: the `lets-be-rational` wheel ships the `py_lets_be_rational` code and `lets_be_rational` re-exports it, so this was one implementation all along.) Signature `(price, F, K, T, q)` with the undiscounted price, pinned by a test (the discounted price gives 0.1726 instead of 0.20 on R1). It meets the same accuracy bound on every well-posed round-trip point.
 - vollib: within the doubled Phase 1 rounding budget of our BSM on 360 cases (worst relative difference 5e-12, at a 1e-29 price).
 - Bump study: all 8 registered checks supported. Observed optima match refined predictions within factors 0.51 to 2.11 (see its note).
 
@@ -37,7 +37,7 @@ Diagnoses and decisions:
 2. SPEC 6.3 amended. Safeguarded Newton bisects when a Newton step is not less than half the previous one (Numerical Recipes' rtsafe). Without that, 30 of the 520 round trips hit the cap. Deep out of the money from the Manaster-Koehler start, which is the inflection point of c(s), Newton crawls: the step c / c' ~ s^3 / x^2.
 3. Added termination reasons DIVERGED and ZERO_DERIVATIVE for naive Newton; sigma is None unless converged.
 4. The round-trip tolerance comes from the price's rounding, not from SPEC 10's condition number kappa alone. At the money with small s, kappa = 1, yet the price is a difference of two terms of about 50 that nearly cancel to 0.055, so the target is accurate only to about 900 eps relative.
-5. Removing `py_lets_be_rational` from a working environment deleted `lets_be_rational`'s files, apparently because the two wheels share files; a forced reinstall fixed it. Fresh installs, as in CI, are unaffected.
+5. Removing `py_lets_be_rational` from a working environment deleted files that `lets_be_rational` needs; a forced reinstall fixed it. Phase 4 confirmed the cause: the `lets-be-rational` wheel ships the `py_lets_be_rational` package itself, so uninstalling that distribution removed shared files. Fresh installs, as in CI, are unaffected.
 
 ## 5. Verdicts
 - G1: SUPPORTED.
