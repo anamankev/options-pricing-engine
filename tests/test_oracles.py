@@ -342,3 +342,26 @@ def test_vollib_prices_match_ours_within_the_rounding_budget() -> None:
         d1 = math.log(Sq / Kr) / s + s / 2
         scale = Sq + Kr + Sq * math.exp(-d1 * d1 / 2) / math.sqrt(2 * math.pi) * (2 + 2 * abs(d1))
         assert abs(ours - theirs) <= 2 * VOLLIB_ROUNDING_FACTOR * EPS * scale, market
+
+
+# --- Study B reference scheme (SPEC 11) ----------------------------------------------------
+
+# Found in Phase 5: QuantLib's highPrecisionScheme() is accurate only to ~6e-8 on Ju-Zhong cases.
+# The Study B scheme (20, 60, 1e-14) agrees with (40, 100, 1e-15) within 7.5e-10 there; 1e-9 is
+# the resolution Study B relies on.
+STUDY_B_SCHEME = (20, 60, 1e-14)
+REFERENCE_RESOLUTION = 1e-9
+
+
+def test_study_b_reference_scheme_is_converged() -> None:
+    from pricing.oracles import quantlib_american
+
+    for option_type, S, K, r, q, sigma, days, year_days, _ in QDFP_CASES[::3]:
+        market = {"S": S, "K": K, "r": r, "q": q, "sigma": sigma}
+        strict = quantlib_american(
+            option_type, **market, days=days, year_days=year_days, scheme=STUDY_B_SCHEME
+        )
+        stricter = quantlib_american(
+            option_type, **market, days=days, year_days=year_days, scheme=(40, 100, 1e-15)
+        )
+        assert abs(strict - stricter) <= REFERENCE_RESOLUTION, (S, K, sigma, days)

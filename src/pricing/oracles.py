@@ -14,8 +14,10 @@ that need T = 0.5 or 0.25 exactly (180 or 90 days).
   1/2 + (1/2) (r - q - sigma^2 / 2) sqrt(dt) / sigma, not SPEC 4.1's martingale probability
   (g - d) / (u - d), so the two CRR prices differ by O(1/N) (found in Phase 2; see
   tests/test_oracles.py).
-- quantlib_american: QdFpAmericanEngine with its high-precision scheme (Andersen, Lake and
-  Offengenden 2016), the Study B reference for American options (SPEC 8.1, 11).
+- quantlib_american: QdFpAmericanEngine (Andersen, Lake and Offengenden 2016). By default it uses
+  QuantLib's highPrecisionScheme(), which Phase 5 found accurate only to about 6e-8 on the Ju-Zhong
+  cases. Passing scheme=(m, n, eps) selects QdFpTanhSinhIterationScheme(m, n, eps); Study B uses
+  (20, 60, 1e-14), which agrees with (40, 100, 1e-15) within 7.5e-10 (SPEC 8.1, 11).
 - lbr_implied_volatility: Jaeckel's "Let's Be Rational" (Jaeckel 2015) through lets_be_rational
   (SPEC 6.3, 8.2): undiscounted Black price, forward, strike, T, and q = +1 call, -1 put; returns
   sigma. The signature and price convention are pinned by tests/test_oracles.py.
@@ -111,13 +113,18 @@ def quantlib_american(
     sigma: float,
     days: int,
     year_days: Literal[360, 365] = 365,
+    scheme: tuple[int, int, float] | None = None,
 ) -> float:
-    """American price from QdFpAmericanEngine with QuantLib's high-precision scheme."""
+    """American price from QdFpAmericanEngine: QuantLib's high-precision scheme, or
+    QdFpTanhSinhIterationScheme(m, n, eps) when scheme = (m, n, eps) is given."""
     option, process, _, _ = _setup(
         option_type, S, K, r, q, sigma, days, year_days, ExerciseStyle.AMERICAN
     )
-    scheme = ql.QdFpAmericanEngine.highPrecisionScheme()
-    option.setPricingEngine(ql.QdFpAmericanEngine(process, scheme))
+    if scheme is None:
+        qdfp_scheme = ql.QdFpAmericanEngine.highPrecisionScheme()
+    else:
+        qdfp_scheme = ql.QdFpTanhSinhIterationScheme(*scheme)
+    option.setPricingEngine(ql.QdFpAmericanEngine(process, qdfp_scheme))
     return float(option.NPV())
 
 

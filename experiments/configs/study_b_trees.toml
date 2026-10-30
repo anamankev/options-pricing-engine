@@ -1,0 +1,71 @@
+# Study B: convergence of binomial trees (SPEC 11).
+# Design and hypotheses: docs/notes/study_b.md (registered at 35cbed5, before this file existed).
+
+reference_scheme = [20, 60, 1e-14]  # QdFpTanhSinhIterationScheme(m, n, eps)
+check_scheme = [40, 100, 1e-15]  # gate 1 comparison
+gate1_tolerance = 1e-9
+gate2_tolerance = 2e-3  # Ju-Zhong, SPEC 9.1 and 11
+resolution = 1e-8  # tree errors below this are beyond the reference: excluded from order fits
+
+[steps]
+crr = { start = 10, stop = 2000 }  # every N
+lr = { start = 11, stop = 2001 }  # odd N
+bbs_k = { start = 4, stop = 13 }  # N = 2^k, for BBS and BBSR
+
+[fit]
+crr_min_n = 100
+lr_min_n = 101
+bbs_min_n = 64
+envelope_block = 10
+oscillation_window = [100, 1999]  # B1b
+richardson_window = [100, 1000]  # B1c: needs V(2N) up to N = 2000
+
+[european]  # R1, Hull Example 15.6: call
+S = 42.0
+K = 40.0
+T = 0.5
+r = 0.10
+q = 0.0
+sigma = 0.20
+
+# Ju and Zhong (1999), Exhibits 3 to 5 (SPEC 9.1), at maturities QuantLib represents exactly.
+# [id, type, S, K, r, q, sigma, days, year_days, published]
+[american]
+cases = [
+    ["R4a", "PUT", 40.0, 35.0, 0.0488, 0.0, 0.2, 30, 360, 0.006],
+    ["R4b", "PUT", 40.0, 40.0, 0.0488, 0.0, 0.2, 120, 360, 1.580],
+    ["R4c", "PUT", 40.0, 40.0, 0.0488, 0.0, 0.2, 210, 360, 1.990],
+    ["R4d", "PUT", 40.0, 45.0, 0.0488, 0.0, 0.2, 210, 360, 5.267],
+    ["R4e", "PUT", 40.0, 45.0, 0.0488, 0.0, 0.3, 120, 360, 5.706],
+    ["R4f", "PUT", 40.0, 40.0, 0.0488, 0.0, 0.4, 210, 360, 4.353],
+    ["R4g", "PUT", 40.0, 45.0, 0.0488, 0.0, 0.4, 210, 360, 7.383],
+    ["R4h", "PUT", 40.0, 40.0, 0.0488, 0.0, 0.2, 30, 360, 0.852],
+    ["R5a", "CALL", 100.0, 100.0, 0.03, 0.07, 0.2, 180, 360, 4.783],
+    ["R5b", "CALL", 110.0, 100.0, 0.03, 0.07, 0.2, 180, 360, 11.098],
+    ["R5c", "CALL", 100.0, 100.0, 0.03, 0.07, 0.4, 180, 360, 10.239],
+    ["R5d", "CALL", 100.0, 100.0, 0.00, 0.07, 0.3, 180, 360, 7.035],
+    ["R5e", "CALL", 100.0, 100.0, 0.07, 0.03, 0.3, 180, 360, 9.250],
+    ["R6a", "PUT", 80.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 25.658],
+    ["R6b", "PUT", 90.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 20.083],
+    ["R6c", "PUT", 100.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 15.498],
+    ["R6d", "PUT", 110.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 11.803],
+    ["R6e", "PUT", 120.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 8.886],
+]
+
+[timing]  # representative case: R4c, American put
+case = "R4c"
+repeats = 7
+crr_n = [10, 20, 40, 80, 160, 320, 640, 1280, 2000]
+lr_n = [11, 21, 41, 81, 161, 321, 641, 1281, 2001]
+budgets_ms = [1.0, 5.0, 25.0]
+b4_min_share = 0.75
+
+[surface]  # reporting only: CRR European error over (strike, N), R1 market otherwise
+K = { start = 36.0, stop = 48.0, count = 49 }
+n = { start = 10, stop = 400 }
+
+[output]
+errors_csv = "experiments/results/tables/study_b_errors.csv"
+orders_csv = "experiments/results/tables/study_b_orders.csv"
+summary_json = "experiments/results/tables/study_b_summary.json"
+figure_dir = "experiments/results/figures"

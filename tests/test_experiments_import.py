@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-MODULES = ("quantlib_reconciliation", "mc_coverage", "greek_bumps", "study_a_iv")
+MODULES = ("quantlib_reconciliation", "mc_coverage", "greek_bumps", "study_a_iv", "study_b_trees")
 BLOCKED = ("QuantLib", "lets_be_rational", "py_lets_be_rational", "vollib")
 
 
