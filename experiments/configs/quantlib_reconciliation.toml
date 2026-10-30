@@ -1,0 +1,19 @@
+# QuantLib reconciliation of European BSM prices and Greeks (SPEC 8.1).
+# Design and hypotheses: docs/notes/phase_1_quantlib_reconciliation.md (registered before running).
+# 5 x 5 x 3 x 3 x 4 x 2 = 1800 cases; SPEC 8.1 asks for at least 500.
+
+relative_tolerance = 1e-11  # SPEC 8.1 starting value
+small_d1 = 3.0  # H3: an exceedance at |d1| below this refutes "only in far tails"
+
+[grid]
+K = 100.0
+S = [70.0, 90.0, 100.0, 110.0, 130.0]
+days = [7, 30, 91, 365, 1825]  # T = days / 365 (Actual365Fixed)
+r = [-0.01, 0.0, 0.05]
+q = [-0.01, 0.0, 0.03]
+sigma = [0.10, 0.25, 0.50, 1.00]
+option_types = ["CALL", "PUT"]
+
+[output]
+cases_csv = "experiments/results/tables/quantlib_reconciliation.csv"
+summary_json = "experiments/results/tables/quantlib_reconciliation_summary.json"
