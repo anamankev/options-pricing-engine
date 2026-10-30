@@ -1,6 +1,6 @@
 # Phase 3: finite-difference bump study
 
-Status: REGISTERED. Sections 1 to 3 were committed before the experiment code existed or ran.
+Status: COMPLETE. Sections 1 to 3 registered at commit `a3815e0`, before the experiment code existed. Results from commit `06d6b36`.
 
 ## 1. Question
 How does the error of a finite-difference Greek depend on the bump size? Does the optimal bump match the theoretical prediction of SPEC 7: eta about eps^(1/3) = 6.1e-6 for first derivatives and eps^(1/4) = 1.2e-4 for second derivatives? A desk that computes Greeks by bumping a pricer has to choose this bump. Too large a bump gives truncation error, too small a bump amplifies rounding. This study measures where the trade-off sits.
@@ -38,12 +38,54 @@ In log-log axes this traces a V. The right branch (truncation) has slope +2. The
 - No randomness. Config: `experiments/configs/greek_bumps.toml`. Outputs: tables and figures under `experiments/results/`, with commit, dirty flag, library versions and platform.
 
 ## 4. Results
-(Added after the run.)
+- Code: commit `06d6b36`, clean tree. Command: `python -m experiments.greek_bumps --config experiments/configs/greek_bumps.toml` (under 1 s).
+- Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, matplotlib 3.11.2.
+- Outputs: `experiments/results/tables/greek_bumps.csv`, `greek_bumps_summary.json`. Figures in `experiments/results/figures/`: `greek_bumps_vshape.png`, `greek_bumps_surface_3d.png`, `greek_bumps_surface_heatmap.png`, `greek_bumps_one_sided.png`.
+- History: the script was committed and run at `23ca365`. Reviewing the figures found overlapping labels, which were fixed in `06d6b36`. The numbers are identical between the two runs.
+
+| Greek | Right slope | Left slope | Optimal eta (observed) | SPEC prediction | Best relative error |
+|---|---|---|---|---|---|
+| delta | +2.00 | -0.77 | 3.2e-6 | 6.1e-6 | 9.2e-13 |
+| gamma | +2.00 | -2.13 | 3.2e-5 | 1.2e-4 | 1.5e-8 |
+| vega | +2.00 | -0.79 | 1.0e-5 | 6.1e-6 | 2.9e-13 |
+| theta | +2.00 | -1.27 | 3.2e-6 | 6.1e-6 | 7.3e-11 |
+| rho | +2.00 | -1.20 | 1.0e-5 | 6.1e-6 | 1.8e-11 |
+
+One-sided theta at T = 1 day: right-branch slope +0.98 for the forward first-order difference, +1.95 for the three-point forward difference.
+
+Post-hoc analysis of the optimum (not pre-registered). The rule of thumb eta ~ eps^(1/3) assumes |f| and |f'''| are of order 1 on the variable's scale. The optimum of the error model itself is h* = (3 eps |V| / |V'''|)^(1/3) for first derivatives and (48 eps |V| / |V''''|)^(1/4) for the second. Evaluating V's higher derivatives with mpmath at 50 digits (V = 7.683):
+
+| Greek | Refined eta* | Observed | Observed / refined |
+|---|---|---|---|
+| delta | 2.3e-6 | 3.2e-6 | 1.39 |
+| gamma | 6.1e-5 | 3.2e-5 | 0.51 |
+| vega | 7.3e-6 | 1.0e-5 | 1.36 |
+| theta | 6.2e-6 | 3.2e-6 | 0.51 |
+| rho | 4.7e-6 | 1.0e-5 | 2.11 |
 
 ## 5. Verdicts
+- D1: SUPPORTED. Right slopes +2.00 for all five Greeks. Left slopes -0.77 to -1.27 for first derivatives (band [-1.5, -0.5]) and -2.13 for gamma (band [-2.5, -1.5]).
+- D2: SUPPORTED. Observed optima within factors 0.26 to 1.65 of SPEC's prediction.
+- D3: SUPPORTED. Best errors 2.9e-13 to 7.3e-11 for first derivatives, 1.5e-8 for gamma.
+- D4: SUPPORTED. Forward first order +0.98, three-point +1.95.
 
 ## 6. Interpretation
+**Observed versus predicted optimal eta.** The SPEC rule of thumb is right to within a factor of 4 and the refined prediction to within a factor of 2.1. Both residual gaps are within one grid step (a factor of 3.16), the resolution of the measurement. The rule of thumb drifts because the optimum depends on the ratio |V| / |V'''|, which is not 1. For gamma (refined 6.1e-5 vs 1.2e-4), the fourth derivative in S is large relative to the price at the money, so a smaller bump is better than eps^(1/4) suggests. The practical lesson for a desk: scale the bump to the problem, not to a universal eta, and a factor of 2 either way costs little because the V is flat-bottomed in log terms.
+
+**The rounding branch is shallower and lower than the model predicts.** The left slopes run -0.77 to -1.27, and delta's best error, 9.2e-13, beats the model's eps^(2/3) scale. The model assumes the rounding errors in V(x + h) and V(x - h) are independent, each of size eps |V|. For a smooth function evaluated at nearby points they are partly correlated and partly cancel in the difference. The left branch is therefore noisy, and only its trend (about -1, about -2 for gamma) is meaningful.
+
+**Gamma is the expensive one.** A second difference divides rounding noise by h^2, so its best error, 1.5e-8, is about four orders of magnitude worse than delta's. This is the same effect that made Phase 1 check gamma by differencing delta instead (`docs/notes/phase_1_bsm.md`).
+
+**Near expiry, one-sided differences pay their order.** The first-order forward difference's error falls only linearly with h, and its best error is about 1.6e-7 at eta = 1e-9. The three-point form recovers second order, with a best error of about 1.2e-9 at eta = 1e-7. Once h > T no central difference exists at all, which is the case SPEC 7's one-sided rule is for.
+
+The 3D surfaces show that the valley's position barely moves across S from 70 to 130. Away from the money its floor rises, because the Greek being approximated is smaller relative to the price's rounding.
 
 ## 7. Limitations and threats to validity
+- One contract (a call at T = 0.5, sigma = 0.25); bumps relative with x_scale = 1. Other scalings move the optimum.
+- The optimum is located on a half-decade grid, so its resolution is a factor of 3.16.
+- The left-branch fits sit in a noisy regime; their bands were wide by design.
+- Analytic Greeks serve as truth; Phase 1 verified them to about 1e-13, far below the errors measured here except at delta's and vega's minima (2.9e-13 to 9.2e-13), where the reference error is a non-negligible share.
 
 ## 8. Next questions
+- A complex-step derivative, (Im f(x + ih)) / h, has no subtractive cancellation and would remove the rounding branch for first derivatives. It needs a complex-valued pricer, which is outside the current scope.
+- An adaptive bump using estimated |V'''| (the refined rule above) in production Greek code.

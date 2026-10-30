@@ -1,0 +1,162 @@
+{
+  "config": {
+    "option_type": "CALL",
+    "eta_exponents": {
+      "start": -1.0,
+      "stop": -12.0,
+      "step": -0.5
+    },
+    "x_scale": 1.0,
+    "market": {
+      "S": 100.0,
+      "K": 100.0,
+      "T": 0.5,
+      "r": 0.05,
+      "q": 0.02,
+      "sigma": 0.25
+    },
+    "surface": {
+      "S": [
+        70.0,
+        75.0,
+        80.0,
+        85.0,
+        90.0,
+        95.0,
+        100.0,
+        105.0,
+        110.0,
+        115.0,
+        120.0,
+        125.0,
+        130.0
+      ]
+    },
+    "short_maturity": {
+      "T": 0.0027397260273972603
+    },
+    "checks": {
+      "right_window": [
+        -3.0,
+        -2.5,
+        -2.0
+      ],
+      "left_window": [
+        -12.0,
+        -11.5,
+        -11.0,
+        -10.5,
+        -10.0
+      ],
+      "right_slope_band": [
+        1.7,
+        2.3
+      ],
+      "left_slope_band_first": [
+        -1.5,
+        -0.5
+      ],
+      "left_slope_band_second": [
+        -2.5,
+        -1.5
+      ],
+      "optimum_factor": 10.0,
+      "best_error_first": 1e-08,
+      "best_error_second": 1e-06,
+      "one_sided_window": [
+        -5.0,
+        -4.5,
+        -4.0,
+        -3.5
+      ],
+      "forward_first_band": [
+        0.7,
+        1.3
+      ],
+      "forward_order2_band": [
+        1.7,
+        2.3
+      ]
+    },
+    "output": {
+      "table_csv": "experiments/results/tables/greek_bumps.csv",
+      "summary_json": "experiments/results/tables/greek_bumps_summary.json",
+      "figure_dir": "experiments/results/figures"
+    }
+  },
+  "environment": {
+    "commit": "06d6b36efcb63813e8ee76ffc332e95cf17dd341",
+    "dirty": false,
+    "python": "3.12.15",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "libraries": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "matplotlib": "3.11.2"
+    },
+    "timestamp_utc": "2026-10-30T19:49:38+00:00"
+  },
+  "per_greek": {
+    "delta": {
+      "order": "first",
+      "right_slope": 1.999714939813022,
+      "left_slope": -0.771233430018602,
+      "optimal_eta": 3.162277660168379e-06,
+      "predicted_eta": 6.055454452393343e-06,
+      "optimum_ratio": 0.5222197086989117,
+      "best_error": 9.219167593603014e-13
+    },
+    "gamma": {
+      "order": "second",
+      "right_slope": 1.9999529968320933,
+      "left_slope": -2.133814520038438,
+      "optimal_eta": 3.1622776601683795e-05,
+      "predicted_eta": 0.0001220703125,
+      "optimum_ratio": 0.25905378592099365,
+      "best_error": 1.471136795513728e-08
+    },
+    "vega": {
+      "order": "first",
+      "right_slope": 2.000503095874393,
+      "left_slope": -0.7897691136208038,
+      "optimal_eta": 1e-05,
+      "predicted_eta": 6.055454452393343e-06,
+      "optimum_ratio": 1.6514037185182073,
+      "best_error": 2.861508053823059e-13
+    },
+    "theta": {
+      "order": "first",
+      "right_slope": 2.0000737238895594,
+      "left_slope": -1.27334152071514,
+      "optimal_eta": 3.162277660168379e-06,
+      "predicted_eta": 6.055454452393343e-06,
+      "optimum_ratio": 0.5222197086989117,
+      "best_error": 7.315176383783941e-11
+    },
+    "rho": {
+      "order": "first",
+      "right_slope": 1.9999629288282108,
+      "left_slope": -1.1960705030693692,
+      "optimal_eta": 1e-05,
+      "predicted_eta": 6.055454452393343e-06,
+      "optimum_ratio": 1.6514037185182073,
+      "best_error": 1.7568087416234426e-11
+    }
+  },
+  "one_sided_slopes": {
+    "forward_first": 0.9849865444047385,
+    "forward_order2": 1.9454989616441218,
+    "central": null
+  },
+  "checks": {
+    "D1_right_slopes_in_band": true,
+    "D1_left_slopes_first_in_band": true,
+    "D1_left_slope_gamma_in_band": true,
+    "D2_optima_within_factor": true,
+    "D3_best_error_first": true,
+    "D3_best_error_gamma": true,
+    "D4_forward_first_slope": true,
+    "D4_forward_order2_slope": true
+  }
+}
