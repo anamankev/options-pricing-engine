@@ -1,0 +1,32 @@
+# Study A: implied-volatility solver accuracy, robustness and cost (SPEC 10).
+# Design and hypotheses: docs/notes/study_a.md (registered at eb4f27f, before this file existed).
+
+F = 100.0
+T = 1.0  # so sigma = s
+option_types = ["CALL", "PUT"]
+x = { start = -6.0, stop = 6.0, step = 0.25 }  # 49 values of ln(F / K)
+s = { low = 1e-4, high = 4.0, count = 60 }  # log-spaced total volatility
+mp_digits = 50  # SPEC 8.3
+methods = ["brent", "naive_newton", "safeguarded_newton", "lets_be_rational"]
+
+[timing]
+repeats = 50  # timed calls per point and solver, after one warm-up call (SPEC 10)
+
+[checks]  # registered in the note, section 2
+a1_fail_region = { s_max = 0.1, abs_x_min = 1.0, min_fraction = 0.5 }
+a1_calm_region = { s_min = 0.2, abs_x_max = 0.5, max_fraction = 0.1 }
+a2_min_median_iterations = 6
+a2_small_s = 1e-2
+a2_min_median_enorm = 10.0
+a3_max_median_enorm = 2.0
+a3_max_p99_enorm = 20.0
+a4_agreement_factor = 10.0
+a4_min_agreeing_fraction = 0.9
+a5_region = { abs_x_max = 0.5, s_max = 1e-2 }
+a5_min_median_newton = 10.0
+a5_max_median_lbr = 2.0
+
+[output]
+table_csv = "experiments/results/tables/study_a_iv.csv"
+summary_json = "experiments/results/tables/study_a_iv_summary.json"
+figure_dir = "experiments/results/figures"
