@@ -8,15 +8,16 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phases 0 to 4 are complete:
+Phases 0 to 5 are complete:
 
 - tooling;
 - the Black-Scholes-Merton reference engine (European prices and Greeks);
 - binomial trees (CRR, Leisen-Reimer, BBS, BBSR) with American exercise, and Monte Carlo with antithetic and control variates;
 - implied-volatility solvers (Brent, naive and safeguarded Newton) with Let's Be Rational as the oracle, and the finite-difference bump study;
-- Study A, the accuracy of those solvers across the (log-moneyness, total-volatility) plane.
+- Study A, the accuracy of those solvers across the (log-moneyness, total-volatility) plane;
+- Study B, the convergence of the trees for European and American options.
 
-Phase 5 (Study B: American-option tree convergence) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
+Phase 6 (benchmarks and v1.0) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
 
 ## Usage
 
@@ -164,6 +165,11 @@ Validation so far (studies A and B have not run yet):
   - Our safeguarded Newton converges everywhere Brent does, with fewer iterations (median 9 vs 12). Near the money at small volatility, cancellation in the price formula costs it accuracy (median normalized error 683).
   - The SPEC's well-posedness rule mislabels points in both directions. A conditioning-based rule fixes it; it was applied post hoc and is labelled as such.
   - Details and figures: [`docs/notes/study_a.md`](docs/notes/study_a.md).
+- **Study B, tree convergence** (R1 European and the 18 Ju-Zhong American cases, against QuantLib QdFp at a validated strict setting):
+  - CRR is first order and oscillates between odd and even N; Richardson on it helps only 32% of the time.
+  - Leisen-Reimer is second order for European options (slope -1.995) but first order for American puts (median -1.00).
+  - BBSR has the smallest error at a given runtime in 85% of comparisons (median order -1.24 on American puts), though its error changes sign as N doubles.
+  - Details and figures: [`docs/notes/study_b.md`](docs/notes/study_b.md).
 - **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000; at n = 100 deep out of the money it drops to 0.83. Control variates cut the cost of a given accuracy 44-fold in the money, but only 1.2-fold deep out of the money. Details: [`docs/notes/phase_2_mc_coverage.md`](docs/notes/phase_2_mc_coverage.md).
 
 ## What this project does not claim

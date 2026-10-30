@@ -11,9 +11,10 @@ from experiments.study_b_trees import (
     step_counts,
 )
 
-EPS = 2.220446049250313e-16
 # A least-squares slope over an exact power law: a few roundings of logs and dot products.
 FIT_TOL = 1e-12
+# |0.9 - 1| / 1 = 0.1 up to the rounding of one subtraction.
+RATIO_RTOL = 1e-12
 
 
 def test_step_counts_follow_spec_11() -> None:
@@ -47,7 +48,7 @@ def test_fit_order_recovers_power_law_and_excludes_unresolved_errors() -> None:
 def test_oscillation_metric() -> None:
     # Alternating signs give |e_N - e_{N+1}| / max = 2; a smooth sequence gives a small ratio.
     assert oscillation([1, 2, 3, 4], [1.0, -1.0, 1.0, -1.0], 1, 3) == 2.0
-    assert oscillation([1, 2, 3], [1.0, 0.9, 0.81], 1, 2) == pytest.approx(0.1, rel=1e-12)
+    assert oscillation([1, 2, 3], [1.0, 0.9, 0.81], 1, 2) == pytest.approx(0.1, rel=RATIO_RTOL)
 
 
 def test_envelope_takes_block_maxima() -> None:
