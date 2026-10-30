@@ -1,0 +1,30 @@
+# Monte Carlo coverage, bias and error scaling (SPEC 5.5).
+# Design and hypotheses: docs/notes/phase_2_mc_coverage.md (registered before running).
+# 3 methods x 3 strikes x 4 path counts = 36 cells, 2000 replications each.
+
+root_seed = 20261030
+replications = 2000
+methods = ["plain", "antithetic", "control_variate"]
+strikes = [80.0, 100.0, 140.0]  # in the money, at the money, deep out of the money
+n_paths = [100, 1000, 10000, 100000]
+pilot_divisor = 10  # control-variate pilot m = max(pilot_minimum, n // pilot_divisor)
+pilot_minimum = 100
+
+[market]
+option_type = "CALL"
+S = 100.0
+T = 1.0
+r = 0.05
+q = 0.02
+sigma = 0.20
+
+[checks]  # thresholds registered in the note, section 2
+coverage_band = [0.935, 0.965]
+coverage_min_n = 1000
+bias_sigmas = 4.0
+slope_band = [-0.52, -0.48]
+vrf_n = 10000
+
+[output]
+cells_csv = "experiments/results/tables/mc_coverage.csv"
+summary_json = "experiments/results/tables/mc_coverage_summary.json"

@@ -21,25 +21,21 @@ import csv
 import itertools
 import json
 import math
-import platform
-import subprocess
 import tomllib
 from collections.abc import Iterator
-from datetime import UTC, datetime
-from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
 import mpmath
 import numpy as np
 
+from experiments.provenance import environment
 from pricing import black_scholes as bs
 from pricing.contracts import DAYS_PER_YEAR, OptionType
 
 QUANTITIES = ("price", "delta", "gamma", "vega", "theta", "rho", "phi")
 LIBRARIES = ("numpy", "scipy", "QuantLib", "mpmath")
 EPS = float(np.finfo(np.float64).eps)
-RESULTS_DIR = "experiments/results"
 MP_DIGITS = 50
 
 
@@ -185,30 +181,12 @@ def _json_float(x: float) -> float | str:
     return x if math.isfinite(x) else str(x)
 
 
-def _git(*args: str) -> str:
-    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout.strip()
-
-
-def environment() -> dict[str, Any]:
-    """Provenance, captured before any output is written. `dirty` ignores the results folder,
-    which this script itself writes to."""
-    return {
-        "commit": _git("rev-parse", "HEAD"),
-        "dirty": bool(_git("status", "--porcelain", "--", ".", f":(exclude){RESULTS_DIR}")),
-        "python": platform.python_version(),
-        "platform": platform.platform(),
-        "machine": platform.machine(),
-        "libraries": {lib: version(lib) for lib in LIBRARIES},
-        "timestamp_utc": datetime.now(UTC).isoformat(timespec="seconds"),
-    }
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args(argv)
     config = load_config(args.config)
-    env = environment()
+    env = environment(LIBRARIES)
 
     rows = [compare_case(case) for case in iter_cases(config)]
     summary = summarize(rows, config["relative_tolerance"], config["small_d1"])
