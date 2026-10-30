@@ -310,6 +310,21 @@ def plot(rows: list[dict[str, Any]], env: dict[str, Any], path: Path) -> None:
     axes[1].set_xlabel("steps N", color=INK)
     axes[1].set_ylabel("seconds per American price", color=INK)
     axes[1].set_title("Trees: runtime vs N (American put)", color=INK, fontsize=10, loc="left")
+    # Reference slopes anchored at CRR's smallest N: runtime ~ N (overhead) and ~ N^2 (work).
+    crr = sorted((r["size"], r["median_s"]) for r in trees if r["method"] == "crr")
+    n0, t0 = crr[0]
+    ns = np.array([n0, crr[-1][0]], dtype=float)
+    for power, style in ((1, ":"), (2, "--")):
+        axes[1].loglog(ns, t0 * (ns / n0) ** power, color=INK_2, linewidth=1, linestyle=style)
+        axes[1].annotate(
+            f"slope {power}",
+            (ns[-1], t0 * (ns[-1] / n0) ** power),
+            xytext=(4, 0),
+            textcoords="offset points",
+            fontsize=8,
+            color=INK_2,
+            va="center",
+        )
     mc = [r for r in rows if r["section"] == "monte_carlo"]
     _series(
         axes[2],
