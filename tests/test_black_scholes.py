@@ -35,6 +35,9 @@ ROUNDING_FACTOR = 64
 # the two can differ by a few units in the last place.
 VECTOR_SCALAR_RTOL = 8 * EPS
 
+# Boundary formulas are a few roundings of exp, a product and a max: 4 ulps covers them.
+BOUNDARY_RTOL = 4 * EPS
+
 # A grid spanning moneyness, maturity, volatility and signed r and q (SPEC 9.2), with total
 # volatility s >= 0.03 so every price is well away from underflow.
 GRID_S = (70.0, 95.0, 100.0, 130.0)
@@ -175,7 +178,7 @@ def test_zero_vol_price_is_discounted_payoff_on_certain_forward(
     th = 1 if option_type is CALL else -1
     expected = math.exp(-r * T) * max(th * (S * math.exp((r - q) * T) - K), 0.0)
     ours = bs.price(option_type, S=S, K=K, T=T, r=r, q=q, sigma=0.0)
-    assert ours == pytest.approx(expected, rel=4 * EPS, abs=0.0)
+    assert ours == pytest.approx(expected, rel=BOUNDARY_RTOL, abs=0.0)
 
 
 @pytest.mark.parametrize("option_type", [CALL, PUT])

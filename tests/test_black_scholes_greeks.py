@@ -42,6 +42,15 @@ ETA_FIRST = 1e-5
 FD_RTOL = 1e-6
 GREEK_FLOOR = 1e-3
 
+HALF_UNIT_2DP = 0.005  # anchor quoted to 2 decimals
+HALF_UNIT_3DP = 0.0005  # anchor quoted to 3 decimals
+# Identities: each side is a few roundings of terms no larger than `scale`.
+IDENTITY_FACTOR = 64
+# vega = S^2 sigma T gamma: two products of the same factors in a different order, ~8 roundings.
+VEGA_GAMMA_RTOL = 16 * EPS
+# Boundary Greeks: a few roundings of exp and products; 8 ulps covers them.
+BOUNDARY_RTOL = 8 * EPS
+
 # Interior grid: smooth points only, |r - q| and maturities spanning the SPEC 9.2 ranges.
 INTERIOR = [
     {"S": S, "K": 100.0, "T": T, "r": r, "q": q, "sigma": sigma}
@@ -89,15 +98,14 @@ def test_hull_sanity_anchors_theta_and_vega() -> None:
     # SPEC 3.3 sanity anchor for the R1 case: call theta about -4.559 per year, vega about 8.81.
     # Computed during spec review, not published values; tolerances are half a unit of the digits
     # quoted. QuantLib confirms them independently in the oracle tests.
-    assert bs.theta(CALL, **R1) == pytest.approx(-4.559, abs=0.0005)
-    assert bs.vega(CALL, **R1) == pytest.approx(8.81, abs=0.005)
+    assert bs.theta(CALL, **R1) == pytest.approx(-4.559, abs=HALF_UNIT_3DP)
+    assert bs.vega(CALL, **R1) == pytest.approx(8.81, abs=HALF_UNIT_2DP)
 
 
 def test_call_put_greek_identities() -> None:
     # Differentiating put-call parity C - P = Sq - Kr (SPEC 9.2) term by term:
     #   delta_C - delta_P = exp(-qT); gamma and vega equal; theta_C - theta_P = q Sq - r Kr;
     #   rho_C - rho_P = T Kr; phi_C - phi_P = -T Sq.
-    # Each side is a few roundings of O(1)-scaled terms; 64 eps of the largest term covers them.
     for case in INTERIOR:
         S, K, T, r, q = case["S"], case["K"], case["T"], case["r"], case["q"]
         Sq, Kr = S * math.exp(-q * T), K * math.exp(-r * T)
@@ -112,7 +120,10 @@ def test_call_put_greek_identities() -> None:
         for greek, fn in GREEKS.items():
             call, put = float(fn(CALL, **case)), float(fn(PUT, **case))
             scale = max(abs(call), abs(put), abs(expected[greek]), 1.0)
-            assert abs((call - put) - expected[greek]) <= 64 * EPS * scale, (greek, case)
+            assert abs((call - put) - expected[greek]) <= IDENTITY_FACTOR * EPS * scale, (
+                greek,
+                case,
+            )
 
 
 def test_vega_gamma_relation() -> None:
@@ -120,7 +131,7 @@ def test_vega_gamma_relation() -> None:
     for case in INTERIOR:
         g, v = float(bs.gamma(CALL, **case)), float(bs.vega(CALL, **case))
         expected = case["S"] ** 2 * case["sigma"] * case["T"] * g
-        assert v == pytest.approx(expected, rel=16 * EPS)
+        assert v == pytest.approx(expected, rel=VEGA_GAMMA_RTOL)
 
 
 # --- SPEC 3.4: boundary policy ----------------------------------------------------------------
@@ -175,7 +186,7 @@ def test_zero_vol_greeks_are_the_deterministic_limit(option_type: OptionType, S:
     }
     for greek, fn in GREEKS.items():
         value = fn(option_type, S=S, K=K, T=T, r=r, q=q, sigma=0.0)
-        assert value == pytest.approx(expected[greek], rel=8 * EPS, abs=0.0), greek
+        assert value == pytest.approx(expected[greek], rel=BOUNDARY_RTOL, abs=0.0), greek
 
 
 @pytest.mark.parametrize("greek", list(GREEKS))
@@ -191,7 +202,9 @@ def test_small_vol_greeks_approach_zero_vol_limit_away_from_forward(greek: str) 
     # reached their limits exactly and the closed form equals the deterministic limit.
     case = {"S": 90.0, "K": 100.0, "T": 1.0, "r": 0.02, "q": 0.0}
     limit = GREEKS[greek](CALL, **case, sigma=0.0)
-    assert GREEKS[greek](CALL, **case, sigma=1e-6) == pytest.approx(limit, rel=8 * EPS, abs=0.0)
+    assert GREEKS[greek](CALL, **case, sigma=1e-6) == pytest.approx(
+        limit, rel=BOUNDARY_RTOL, abs=0.0
+    )
 
 
 def test_array_with_one_undefined_entry_raises_and_names_it() -> None:

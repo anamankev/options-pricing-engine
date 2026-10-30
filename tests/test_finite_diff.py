@@ -14,6 +14,8 @@ EPS = float(np.finfo(np.float64).eps)
 # |f| <= 16 and h = 1e-2 those are ~4e-13 and ~1.4e-10; the tolerances leave ~50x margin.
 FIRST_ROUNDING_TOL = 2e-11
 SECOND_ROUNDING_TOL = 1e-8
+# At the optimal step on exp, predicted total error is ~1e-10 relative; 1e-9 allows 10x.
+OPTIMAL_STEP_RTOL = 1e-9
 
 
 def test_relative_step_scales_with_x_and_floors_at_x_scale() -> None:
@@ -43,11 +45,10 @@ def test_second_difference_truncation_error_is_two_h_squared_on_a_quartic() -> N
 
 
 def test_near_optimal_step_on_exp_reaches_predicted_accuracy() -> None:
-    # SPEC 7: optimal eta ~ eps^(1/3) for f'. Total error ~ h^2 |f'''| / 6 + eps |f| / h, which at
-    # x = 0.3 and h = eps^(1/3) is about 1e-10 relative; 1e-9 allows a factor of 10.
+    # SPEC 7: optimal eta ~ eps^(1/3) for f'; total error ~ h^2 |f'''| / 6 + eps |f| / h.
     x = 0.3
     h = relative_step(x, eta=EPS ** (1 / 3), x_scale=1.0)
-    assert abs(central_first(math.exp, x, h) / math.exp(x) - 1.0) <= 1e-9
+    assert abs(central_first(math.exp, x, h) / math.exp(x) - 1.0) <= OPTIMAL_STEP_RTOL
 
 
 def test_divides_by_the_step_actually_taken() -> None:

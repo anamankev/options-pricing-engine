@@ -34,6 +34,12 @@ CONFIG = Path(__file__).resolve().parents[1] / "experiments/configs/quantlib_rec
 ORACLE_RTOL = 1e-11
 ORACLE_ABS_EPS_SCALE = 4.0
 
+HALF_UNIT_2DP = 0.005  # anchor quoted to 2 decimals
+HALF_UNIT_3DP = 0.0005  # anchor quoted to 3 decimals
+# Far-tail relative accuracy of ours: d^2 amplification at |d1| = 9.2 is ~85 eps; 1e-12 is
+# ~50x that, and QuantLib's error at the same point is ~1 (reconciliation note, section 4).
+TAIL_RTOL = 1e-12
+
 
 def test_reconciliation_grid_agrees_with_quantlib() -> None:
     cases = list(iter_cases(load_config(CONFIG)))
@@ -58,8 +64,8 @@ def test_quantlib_greek_units_match_spec_on_r1() -> None:
         OptionType.CALL, S=42.0, K=40.0, r=0.10, q=0.0, sigma=0.20, days=180, year_days=360
     )
     assert ql.T == 0.5  # Actual360, 180 days: exactly the R1 maturity
-    assert ql.vega == pytest.approx(8.81, abs=0.005)
-    assert ql.theta == pytest.approx(-4.559, abs=0.0005)
+    assert ql.vega == pytest.approx(8.81, abs=HALF_UNIT_2DP)
+    assert ql.theta == pytest.approx(-4.559, abs=HALF_UNIT_3DP)
 
 
 @pytest.mark.parametrize(
@@ -96,7 +102,7 @@ def test_far_tail_put_delta_stays_accurate_where_quantlib_does_not() -> None:
     exact = exact_value("delta", case)
     with mpmath.workdps(50):
         ours_rel = float(abs(mpmath.mpf(row["delta_ours"]) - exact) / abs(exact))
-    assert ours_rel <= 1e-12
+    assert ours_rel <= TAIL_RTOL
     # Precondition: if a QuantLib release fixes its tail precision, this fails, and
     # ORACLE_ABS_EPS_SCALE above should be revisited.
     assert row["delta_rel_err"] > ORACLE_RTOL
