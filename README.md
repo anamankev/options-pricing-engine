@@ -8,7 +8,20 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phase 0 (environment and tooling) is complete. Phase 1 (Black-Scholes-Merton reference engine) is next. No pricing code yet. See SPEC §14 for the phase plan and `docs/notes/phase_0_environment.md` for the Phase 0 record.
+Phases 0 and 1 are complete: tooling, and the Black-Scholes-Merton reference engine (European prices and Greeks). Phase 2 (binomial trees with American exercise, Monte Carlo) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
+
+## Usage
+
+```python
+from pricing import black_scholes as bs
+from pricing.contracts import OptionType
+
+# Hull, Options, Futures, and Other Derivatives, Example 15.6
+bs.price(OptionType.CALL, S=42.0, K=40.0, T=0.5, r=0.10, q=0.0, sigma=0.20)  # 4.759422392871536
+bs.vega(OptionType.CALL, S=42.0, K=40.0, T=0.5, r=0.10, q=0.0, sigma=0.20)  # 8.81 per 1.00 of sigma
+```
+
+Market inputs are keyword-only, so r and q cannot be swapped by position. Arrays broadcast like NumPy and return arrays; scalars return a float. Invalid inputs raise `PricingInputError` naming the parameter, and Greeks that do not exist (for example delta at expiry with S = K) raise `UndefinedGreekError`.
 
 ## Scope
 
@@ -70,10 +83,11 @@ Full table: SPEC §2. In short: volatility `sigma` is an annualized decimal (0.2
 ## Layout
 
 ```
-src/pricing/      library code (pricing modules arrive from Phase 1)
+src/pricing/      library: contracts, errors, black_scholes, finite_diff, oracles
 tests/            pytest suite; conftest.py holds the Hypothesis profiles
 docs/SPEC.md      technical standard
 docs/notes/       research notes (template: TEMPLATE.md)
+experiments/      runnable studies, configs/, results/
 .github/          CI workflow
 ```
 
@@ -82,7 +96,11 @@ docs/notes/       research notes (template: TEMPLATE.md)
 
 ## Results
 
-None yet. Study results will appear here with the commit, configuration and environment that produced them.
+Validation of the Phase 1 engine (studies A and B have not run yet):
+
+- **Against exact values:** prices agree with a 50-digit mpmath evaluation on 288 cases. The worst error is 0.76 times eps times the formula's error scale, inside a budget of 64 (`tests/test_black_scholes.py`).
+- **Greeks:** all six agree with finite differences to 5e-8 relative or better (`tests/test_black_scholes_greeks.py`).
+- **Against QuantLib 1.44, 1800 cases:** median relative agreement is 2e-16 to 1e-15. In far tails (|d1| >= 3.2) QuantLib loses relative precision, up to 100% against the exact value, while this library stays within 2.5e-10. Details: [`docs/notes/phase_1_quantlib_reconciliation.md`](docs/notes/phase_1_quantlib_reconciliation.md).
 
 ## What this project does not claim
 
