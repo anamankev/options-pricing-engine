@@ -1,0 +1,78 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "options-pricing-engine"
+dynamic = ["version"]
+description = "Research-grade option pricing: BSM, binomial trees, Monte Carlo, implied volatility, with validated numerics"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Kelvin Godwin Anaman" }]
+dependencies = [
+    "numpy>=2.0,<3",
+    "scipy>=1.13,<2",
+    "matplotlib>=3.9,<4",
+    "mpmath>=1.3,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<10",
+    "hypothesis>=6.100,<7",
+    "pytest-benchmark>=5,<6",
+    "ruff>=0.17,<0.18",  # minor pinned: Ruff adds and changes rules between minor versions
+    "mypy>=2.0,<3",
+]
+oracle = [
+    "QuantLib>=1.40,<2",
+    "py_lets_be_rational>=1.1,<2",
+    # SPEC 8.2 names py_vollib; since 1.0.12 that is a shim over vollib (same repo and license)
+    # whose import raises DeprecationWarning, so we depend on vollib directly.
+    "vollib>=1.0.11,<2",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "pricing.__version__" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+pricing = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "slow: takes more than a few seconds; excluded from the fast subset",
+    "statistical: Monte Carlo coverage or scaling check with fixed seeds (SPEC 5.5)",
+    "oracle: reconciliation against QuantLib or py_lets_be_rational; needs the oracle extra",
+]
+# Any warning fails the test, so a NumPy RuntimeWarning (invalid value, overflow) cannot pass
+# silently. A third-party warning may be ignored here only with a one-line justification.
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# BLE (blind except) and E722 (bare except) enforce the "no bare or broad except" rule.
+# N (pep8-naming) is left out on purpose: it would flag the standard math names S, K, T.
+select = ["E", "F", "W", "I", "B", "BLE", "UP", "SIM", "C4", "RUF", "NPY", "PT", "PERF", "PIE", "RET"]
+ignore = [
+    "RET504",  # assigning before return often reads better in numeric code
+]
+
+[tool.mypy]
+python_version = "3.11"  # check against the oldest supported Python, whatever runs mypy
+strict = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+# No type stubs exist for the oracle packages.
+module = ["QuantLib.*", "py_lets_be_rational.*", "py_vollib.*"]
+ignore_missing_imports = true
