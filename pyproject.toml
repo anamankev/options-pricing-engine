@@ -6,6 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "options-pricing-engine"
 dynamic = ["version"]
 description = "Research-grade option pricing: BSM, binomial trees, Monte Carlo, implied volatility, with validated numerics"
+readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 license-files = ["LICENSE"]
