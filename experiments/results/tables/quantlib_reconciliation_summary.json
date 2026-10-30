@@ -1,0 +1,225 @@
+{
+  "config": {
+    "relative_tolerance": 1e-11,
+    "small_d1": 3.0,
+    "grid": {
+      "K": 100.0,
+      "S": [
+        70.0,
+        90.0,
+        100.0,
+        110.0,
+        130.0
+      ],
+      "days": [
+        7,
+        30,
+        91,
+        365,
+        1825
+      ],
+      "r": [
+        -0.01,
+        0.0,
+        0.05
+      ],
+      "q": [
+        -0.01,
+        0.0,
+        0.03
+      ],
+      "sigma": [
+        0.1,
+        0.25,
+        0.5,
+        1.0
+      ],
+      "option_types": [
+        "CALL",
+        "PUT"
+      ]
+    },
+    "output": {
+      "cases_csv": "experiments/results/tables/quantlib_reconciliation.csv",
+      "summary_json": "experiments/results/tables/quantlib_reconciliation_summary.json"
+    }
+  },
+  "environment": {
+    "commit": "8a00ed2e0ad7333a07dce3df4b3ed0a928e5927e",
+    "dirty": false,
+    "python": "3.12.15",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "libraries": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "QuantLib": "1.44",
+      "mpmath": "1.4.1"
+    },
+    "timestamp_utc": "2026-10-30T16:41:04+00:00"
+  },
+  "n_cases": 1800,
+  "summary": {
+    "price": {
+      "max_rel_err": "inf",
+      "p99_rel_err": "inf",
+      "median_rel_err": 4.093236716194789e-16,
+      "max_abs_err": 4.973799150320701e-14,
+      "count_over_rtol": 116,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 3.224148599236484,
+      "max_abs_err_eps_scale_over_rtol": 0.6523908606305626,
+      "over_rtol_ours_max_rel_vs_exact": 2.5334257182477263e-10,
+      "over_rtol_quantlib_max_rel_vs_exact": 1.0,
+      "worst_case": {
+        "option_type": "PUT",
+        "S": 130.0,
+        "days": 7,
+        "r": -0.01,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 18.95225071747766,
+        "ours": 2.0003161635456597e-81,
+        "quantlib": 0.0
+      }
+    },
+    "delta": {
+      "max_rel_err": 48959776026568.77,
+      "p99_rel_err": 170229068.54206717,
+      "median_rel_err": 2.287725140049307e-16,
+      "max_abs_err": 7.327471962526033e-15,
+      "count_over_rtol": 73,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 4.871793462411156,
+      "max_abs_err_eps_scale_over_rtol": 0.3657952547073364,
+      "over_rtol_ours_max_rel_vs_exact": 4.2275703623791965e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 0.9999999999999796,
+      "worst_case": {
+        "option_type": "PUT",
+        "S": 130.0,
+        "days": 30,
+        "r": 0.0,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 9.19446577856003,
+        "ours": -1.885861974401261e-20,
+        "quantlib": -3.851859888774472e-34
+      }
+    },
+    "gamma": {
+      "max_rel_err": 1.2375284685335164e-10,
+      "p99_rel_err": 4.660260395637582e-11,
+      "median_rel_err": 3.805311379186124e-16,
+      "max_abs_err": 3.8510861166685117e-16,
+      "count_over_rtol": 36,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 18.896856736300226,
+      "max_abs_err_eps_scale_over_rtol": 2.1774312404300807e-71,
+      "over_rtol_ours_max_rel_vs_exact": 3.650159362990864e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 1.2349384055744167e-10,
+      "worst_case": {
+        "option_type": "CALL",
+        "S": 70.0,
+        "days": 7,
+        "r": -0.01,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 25.74857744097954,
+        "ours": 4.448447095190467e-145,
+        "quantlib": 4.448447095740975e-145
+      }
+    },
+    "vega": {
+      "max_rel_err": 1.241252964526893e-10,
+      "p99_rel_err": 4.700144427308277e-11,
+      "median_rel_err": 3.1919308890174193e-16,
+      "max_abs_err": 7.105427357601002e-14,
+      "count_over_rtol": 36,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 18.896856736300226,
+      "max_abs_err_eps_scale_over_rtol": 3.025975989239546e-73,
+      "over_rtol_ours_max_rel_vs_exact": 3.6531889901465e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 1.2386599188354959e-10,
+      "worst_case": {
+        "option_type": "CALL",
+        "S": 70.0,
+        "days": 7,
+        "r": -0.01,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 25.74857744097954,
+        "ours": 4.180321516850219e-144,
+        "quantlib": 4.1803215173691025e-144
+      }
+    },
+    "theta": {
+      "max_rel_err": 0.03652530201421472,
+      "p99_rel_err": 4.042723303176519e-06,
+      "median_rel_err": 9.709320399750651e-16,
+      "max_abs_err": 2.1183055309847987e-12,
+      "count_over_rtol": 49,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 5.079728045631617,
+      "max_abs_err_eps_scale_over_rtol": 0.018411360448226333,
+      "over_rtol_ours_max_rel_vs_exact": 3.652844040675352e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 0.03790997531181782,
+      "worst_case": {
+        "option_type": "PUT",
+        "S": 130.0,
+        "days": 30,
+        "r": 0.05,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 9.337811323330282,
+        "ours": -1.0151110489138627e-18,
+        "quantlib": -1.0535938837169539e-18
+      }
+    },
+    "rho": {
+      "max_rel_err": 16625602918629.318,
+      "p99_rel_err": 170371258.92677814,
+      "median_rel_err": 2.6519306130493156e-16,
+      "max_abs_err": 2.5579538487363607e-13,
+      "count_over_rtol": 71,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 4.871793462411156,
+      "max_abs_err_eps_scale_over_rtol": 0.36859040312714625,
+      "over_rtol_ours_max_rel_vs_exact": 4.298620946627325e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 0.9999999999999398,
+      "worst_case": {
+        "option_type": "PUT",
+        "S": 130.0,
+        "days": 30,
+        "r": 0.0,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 9.19446577856003,
+        "ours": -2.0211916697623678e-19,
+        "quantlib": -1.2157102991419702e-32
+      }
+    },
+    "phi": {
+      "max_rel_err": 16574924175660.643,
+      "p99_rel_err": 170247092.8961728,
+      "median_rel_err": 2.3026347752760607e-16,
+      "max_abs_err": 2.8421709430404007e-13,
+      "count_over_rtol": 73,
+      "count_over_rtol_with_small_d1": 0,
+      "min_abs_d1_over_rtol": 4.871793462411156,
+      "max_abs_err_eps_scale_over_rtol": 0.36580534456951175,
+      "over_rtol_ours_max_rel_vs_exact": 4.226053178259202e-13,
+      "over_rtol_quantlib_max_rel_vs_exact": 0.9999999999999397,
+      "worst_case": {
+        "option_type": "PUT",
+        "S": 130.0,
+        "days": 30,
+        "r": 0.0,
+        "q": -0.01,
+        "sigma": 0.1,
+        "abs_d1": 9.19446577856003,
+        "ours": 2.015030602784909e-19,
+        "quantlib": 1.2157102991419702e-32
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Phase 1: QuantLib reconciliation of European prices and Greeks
 
-Status: REGISTERED. This section was committed before the reconciliation code existed or ran.
+Status: COMPLETE. Sections 1 to 3 registered at commit `c53fe79`, before the reconciliation code existed. Results from commit `8a00ed2`.
 
 ## 1. Question
 Do our closed-form BSM prices and Greeks (`pricing.black_scholes`) agree with QuantLib's independent implementation to the precision two double-precision closed forms should reach? Where they differ, is the cause numerical conditioning or a formula, unit or convention error? The answer decides the oracle-test tolerance (SPEC 8.1) and the status of R1 to R3 (SPEC 9.1).
@@ -22,12 +22,57 @@ Do our closed-form BSM prices and Greeks (`pricing.black_scholes`) agree with Qu
 - Decision rule: if H1 and H2 hold, the oracle test asserts relative 1e-11. Otherwise the tolerance is set only after a recorded diagnosis, never loosened to fit.
 
 ## 4. Results
-(Added after the run.)
+- Code: commit `8a00ed2`, clean tree. Command: `python -m experiments.quantlib_reconciliation --config experiments/configs/quantlib_reconciliation.toml`.
+- Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, QuantLib 1.44, mpmath 1.4.1.
+- Outputs: `experiments/results/tables/quantlib_reconciliation.csv` (1800 rows) and `quantlib_reconciliation_summary.json`.
+- History: the first run, at `441cea7`, crashed while printing its summary (an infinite relative error could not be formatted) and recorded `dirty: true` because it checked git status after writing its own output. Both were fixed in `8a00ed2` before the run reported here; the case data were the same.
+
+Relative error against QuantLib (1800 cases):
+
+| Quantity | Max | 99th pct | Median | Cases > 1e-11 | Smallest abs(d1) among them |
+|---|---|---|---|---|---|
+| price | inf (18 cases where QuantLib returns exactly 0) | inf | 4.1e-16 | 116 | 3.2 |
+| delta | 4.9e13 | 1.7e8 | 2.3e-16 | 73 | 4.9 |
+| gamma | 1.2e-10 | 4.7e-11 | 3.8e-16 | 36 | 18.9 |
+| vega | 1.2e-10 | 4.7e-11 | 3.2e-16 | 36 | 18.9 |
+| theta | 3.7e-2 | 4.0e-6 | 9.7e-16 | 49 | 5.1 |
+| rho | 1.7e13 | 1.7e8 | 2.7e-16 | 71 | 4.9 |
+| phi | 1.7e13 | 1.7e8 | 2.3e-16 | 73 | 4.9 |
+
+Post-hoc diagnosis (not pre-registered; added after the first run showed relative errors far beyond rounding). In every case above 1e-11, both values were scored against mpmath at 50 digits, and the absolute difference was expressed in units of eps times the quantity's natural scale (S for price and theta, 1 for delta, 1/S for gamma, S sqrt(T) for vega, K T for rho, S T for phi):
+
+| Quantity | Ours, max rel. error vs exact | QuantLib, max rel. error vs exact | Max abs(ours - QuantLib) / (eps x scale) |
+|---|---|---|---|
+| price | 2.5e-10 | 1.0 | 0.65 |
+| delta | 4.2e-13 | 1.0 | 0.37 |
+| gamma | 3.7e-13 | 1.2e-10 | 0.00 |
+| vega | 3.7e-13 | 1.2e-10 | 0.00 |
+| theta | 3.7e-13 | 3.8e-2 | 0.02 |
+| rho | 4.3e-13 | 1.0 | 0.37 |
+| phi | 4.2e-13 | 1.0 | 0.37 |
+
+Example: put, S = 130, K = 100, 30 days, sigma = 0.10, abs(d1) = 9.2. Exact delta -1.8859e-20; ours -1.8859e-20; QuantLib -3.85e-34.
 
 ## 5. Verdicts
+- H1: REFUTED. 116 of 1800 prices differ by more than relative 1e-11; in 18, QuantLib returns exactly 0 for a positive price (e.g. 2.0e-81).
+- H2: units SUPPORTED (R1: vega 8.813 per 1.00, theta -4.559 per year, matching SPEC 2.2). Agreement within relative 1e-11 REFUTED for all six Greeks (36 to 73 cases each).
+- H3: SUPPORTED. No exceedance at abs(d1) < 3; the smallest is 3.2. Scored against exact values, every exceedance is QuantLib's error (up to 100% relative), while ours stays within 2.5e-10 (price) and 4.3e-13 (Greeks).
+- H4: SUPPORTED. QuantLib gives 4.759422 and 0.808599 for R1 at 6 decimals, 2.4648 for R2 and 2.1334 for R3. Ours agrees within relative 1e-11, and the R1 call matches to the last bit.
 
 ## 6. Interpretation
+Where both implementations are well conditioned they agree to machine precision (medians 2e-16 to 1e-15). The disagreements are all in far tails, and there QuantLib is the inaccurate one. Its tail values look like forms such as N(d) - 1, which cancel to zero or noise once N(d) rounds to 1; we inferred this from its outputs and did not read its source. Ours evaluates N(theta d) directly (SPEC 3.4), so it keeps relative precision.
+
+In absolute terms the differences are negligible (at most 0.65 eps times scale), which is all a hedging desk would see. Relative precision in the tails matters for implied volatility: a deep out-of-the-money price returned as 0 instead of 2e-81 has no implied volatility at all. That is the regime Study A measures.
+
+Decision (section 3 rule, after the diagnosis above): the oracle test passes a case if the relative error is at most 1e-11, or the absolute error is at most 4 eps x natural scale (observed maximum 0.65, so a 6x margin). Our tail accuracy is held to relative precision separately, by the mpmath tests.
 
 ## 7. Limitations and threats to validity
+- One platform for this run. The oracle tests repeat it on Linux in CI's manual full suite.
+- The grid stops at sigma = 1 and T = 5 years, and at abs(ln(S/K)) <= 0.36.
+- The natural scales are a modelling choice; the absolute criterion depends on them.
+- The mpmath scoring covers only cases above 1e-11. Elsewhere agreement at 1e-16 is taken as joint correctness; `tests/test_black_scholes.py` checks ours against mpmath on its own grid.
+- QuantLib's mechanism is inferred, not read from source.
 
 ## 8. Next questions
+- Study A: price targets will come from mpmath (SPEC 8.3). This run shows a double-precision library cannot be trusted for tail targets.
+- Does QuantLib's tail behaviour also affect its implied-volatility routines? Out of scope here; worth a line in Study A's limitations.

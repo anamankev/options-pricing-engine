@@ -45,6 +45,7 @@ pricing = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]  # lets tests reuse experiments/ code, e.g. the QuantLib comparison
 addopts = "-ra --strict-markers --strict-config"
 markers = [
     "slow: takes more than a few seconds; excluded from the fast subset",
