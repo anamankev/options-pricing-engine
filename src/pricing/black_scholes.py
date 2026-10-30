@@ -1,4 +1,4 @@
-"""Black-Scholes-Merton prices for European options (SPEC 3).
+"""Black-Scholes-Merton prices and analytic Greeks for European options (SPEC 3).
 
 Model (SPEC 2.1). Under the risk-neutral measure dS = (r - q) S dt + sigma S dW, with r, q and
 sigma constant. A price is the discounted risk-neutral expected payoff under those assumptions
@@ -29,10 +29,28 @@ Boundary policy (SPEC 3.4):
 - T = 0: the price is the intrinsic value max(theta (S - K), 0).
 - sigma = 0 with T > 0: the forward is certain, so the price is D max(theta (F - K), 0).
 - No threshold switches to these formulas for small s; continuity is tested instead.
+- Greeks at those boundaries are the derivatives of the boundary price: the deterministic limit.
+  Where that price has a kink (F = K, which at T = 0 means S = K), delta, gamma, vega, theta,
+  rho and phi do not exist and raise UndefinedGreekError. Gamma, vega and theta also raise at
+  T = 0 for every S (SPEC 3.4). Rho and phi at T = 0 are 0: the expiry payoff does not depend on
+  r or q (SPEC is silent here; this is the exact derivative).
+
+Greeks (SPEC 3.3), per 1.00 change in the input (SPEC 2.2); theta = -dV/dT per year. With
+phi(.) the standard normal density, Sq = S exp(-q T) and Kr = K exp(-r T):
+    delta = theta exp(-q T) N(theta d1)
+    gamma = exp(-q T) phi(d1) / (S s)
+    vega  = Sq phi(d1) sqrt(T)
+    theta = -Sq phi(d1) sigma / (2 sqrt(T)) - theta r Kr N(theta d2) + theta q Sq N(theta d1)
+    rho   = theta T Kr N(theta d2)
+    phi   = -theta T Sq N(theta d1)        (dividend rho, dV/dq)
+Each row of SPEC 3.3's call and put columns is the theta = +1 and theta = -1 case of these lines.
+They follow from differentiating V with the identity Sq phi(d1) = Kr phi(d2), which removes every
+term in dN/dd (Hull, Options, Futures, and Other Derivatives, chapter on the Greek letters).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -46,6 +64,14 @@ from pricing.contracts import (
     option_sign,
     validate_market_inputs,
 )
+from pricing.errors import UndefinedGreekError
+
+_SQRT_2PI = math.sqrt(2.0 * math.pi)
+_AT_KINK = (
+    "where the boundary payoff has its kink at the forward "
+    "(T = 0 with S = K, or sigma = 0 with F = K; SPEC 3.4)"
+)
+_AT_EXPIRY = "at T = 0 (SPEC 3.4)"
 
 
 @dataclass(frozen=True)
@@ -148,3 +174,148 @@ def price(
     # exactly, giving the intrinsic value max(theta (S - K), 0).
     certain_forward = k.D * np.maximum(th * (k.F - k.K), 0.0)
     return _result(np.where(k.regular, closed_form, certain_forward), k.all_scalar)
+
+
+def delta(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """dV/dS per 1.00 of S. Raises UndefinedGreekError at the boundary kink (SPEC 3.4)."""
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("delta", ~k.regular & k.at_forward, _AT_KINK)
+    th = k.theta
+    closed_form = th * k.disc_q * ndtr(th * k.d1)
+    certain_forward = th * k.disc_q * k.in_the_money.astype(np.float64)
+    return _result(np.where(k.regular, closed_form, certain_forward), k.all_scalar)
+
+
+def gamma(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """d2V/dS2 per 1.00 of S. Raises UndefinedGreekError at T = 0 and at the kink (SPEC 3.4)."""
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("gamma", k.expired, _AT_EXPIRY)
+    _raise_if_undefined("gamma", ~k.regular & k.at_forward, _AT_KINK)
+    closed_form = k.disc_q * _normal_pdf(k.d1) / (k.S * k.s)
+    return _result(np.where(k.regular, closed_form, 0.0), k.all_scalar)
+
+
+def vega(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """dV/dsigma per 1.00 of sigma (per_vol_point divides by 100). Raises like gamma."""
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("vega", k.expired, _AT_EXPIRY)
+    _raise_if_undefined("vega", ~k.regular & k.at_forward, _AT_KINK)
+    closed_form = k.S * k.disc_q * _normal_pdf(k.d1) * k.sqrt_T
+    return _result(np.where(k.regular, closed_form, 0.0), k.all_scalar)
+
+
+def theta(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """-dV/dT per year: calendar decay, negative for a typical long option (SPEC 2.2).
+
+    Raises like gamma. At sigma = 0 away from the kink it is theta (q Sq - r Kr) in the money and
+    0 out of it: minus the T-derivative of D max(theta (F - K), 0).
+    """
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("theta", k.expired, _AT_EXPIRY)
+    _raise_if_undefined("theta", ~k.regular & k.at_forward, _AT_KINK)
+    th = k.theta
+    Sq, Kr = k.S * k.disc_q, k.K * k.D
+    closed_form = (
+        -Sq * _normal_pdf(k.d1) * k.sigma / (2.0 * k.sqrt_T)
+        - th * k.r * Kr * ndtr(th * k.d2)
+        + th * k.q * Sq * ndtr(th * k.d1)
+    )
+    certain_forward = th * (k.q * Sq - k.r * Kr) * k.in_the_money.astype(np.float64)
+    return _result(np.where(k.regular, closed_form, certain_forward), k.all_scalar)
+
+
+def rho(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """dV/dr per 1.00 of r. 0 at T = 0; raises at the sigma = 0 kink (SPEC 3.4)."""
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("rho", ~k.regular & ~k.expired & k.at_forward, _AT_KINK)
+    th = k.theta
+    Kr = k.K * k.D
+    closed_form = th * k.T * Kr * ndtr(th * k.d2)
+    certain_forward = th * k.T * Kr * k.in_the_money.astype(np.float64)
+    return _result(np.where(k.regular, closed_form, certain_forward), k.all_scalar)
+
+
+def phi(
+    option_type: OptionType,
+    *,
+    S: npt.ArrayLike,
+    K: npt.ArrayLike,
+    T: npt.ArrayLike,
+    r: npt.ArrayLike,
+    q: npt.ArrayLike,
+    sigma: npt.ArrayLike,
+    allow_extreme_vol: bool = False,
+) -> float | FloatArray:
+    """Dividend rho, dV/dq per 1.00 of q. 0 at T = 0; raises at the sigma = 0 kink (SPEC 3.4)."""
+    k = _kernel(option_type, S, K, T, r, q, sigma, allow_extreme_vol)
+    _raise_if_undefined("phi", ~k.regular & ~k.expired & k.at_forward, _AT_KINK)
+    th = k.theta
+    Sq = k.S * k.disc_q
+    closed_form = -th * k.T * Sq * ndtr(th * k.d1)
+    certain_forward = -th * k.T * Sq * k.in_the_money.astype(np.float64)
+    return _result(np.where(k.regular, closed_form, certain_forward), k.all_scalar)
+
+
+def _normal_pdf(x: FloatArray) -> FloatArray:
+    return np.exp(-0.5 * x * x) / _SQRT_2PI
+
+
+def _raise_if_undefined(greek: str, undefined: BoolArray, reason: str) -> None:
+    """Raise for the whole call if any element is undefined; arrays name the first bad index."""
+    if not np.any(undefined):
+        return
+    where = ""
+    if undefined.ndim > 0:
+        first = tuple(int(i) for i in np.argwhere(undefined)[0])
+        where = f" ({int(np.count_nonzero(undefined))} inputs; first at index {first})"
+    raise UndefinedGreekError(f"{greek} is undefined {reason}{where}")
