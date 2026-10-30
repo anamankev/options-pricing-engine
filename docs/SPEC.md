@@ -174,17 +174,17 @@ R = 2000 replications via `np.random.SeedSequence(seed).spawn(R)`, n in {1e2, 1e
 Given discounted price V, solve for sigma >= 0 with `BSM(sigma) = V`. Work in Black form: `c = V / D`, solve for total volatility s, return `sigma = s / sqrt(T)`. Vega in s: `dc/ds = F phi(d1) = K phi(d2)`.
 
 ### 6.2 Feasibility (checked before any solver runs)
-Intrinsic `iota = max(theta_cp (F - K), 0)`; upper bound `F` (call) or `K` (put). With `tol_b = 8 * eps * max(F, K)`:
+Intrinsic `iota = max(theta_cp (F - K), 0)`; upper bound `F` (call) or `K` (put). With `tol_b = 8 * eps * max(F, K)` (Phase 3 amendment: at the lower bound `tol_b` applies only when `iota > 0`; out of the money `iota` is exactly 0 and the lower-bound tolerance is 0, because the tolerance exists to absorb rounding in `F - K`, and an out-of-the-money price below `8 eps max(F, K)` such as 1e-20 has a well-conditioned volatility that the original rule would have returned as 0; see `tests/test_implied_vol.py`):
 - `c < iota - tol_b`: raise `InfeasiblePriceError` (below intrinsic).
 - `|c - iota| <= tol_b`: return s = 0, reason `AT_LOWER_BOUND`.
 - `c >= upper - tol_b`: raise `InfeasiblePriceError` (sigma would be infinite).
 
 ### 6.3 Solvers (all return `IVResult`)
-`IVResult` fields: sigma, total_vol, residual, iterations, converged, reason (enum: CONVERGED, AT_LOWER_BOUND, MAX_ITERATIONS, BRACKET_FAILURE), method, optional path of iterates.
+`IVResult` fields: sigma, total_vol, residual, iterations, converged, reason (enum: CONVERGED, AT_LOWER_BOUND, MAX_ITERATIONS, BRACKET_FAILURE, plus DIVERGED and ZERO_DERIVATIVE for naive Newton, added in Phase 3), method, optional path of iterates. Phase 3 also records function_evaluations, and sigma and total_vol are None unless converged.
 
 1. **Brent (baseline):** bracket [0, s_hi], s_hi doubling from 1.0 until `c(s_hi) > c_target`, capped at s_max = 20 (else BRACKET_FAILURE). `scipy.optimize.brentq` with `xtol=1e-15`, `rtol=4*eps`, `maxiter=200`, `full_output=True`.
 2. **Naive Newton:** start s0 = 0.2 sqrt(T), no safeguards, cap 100 iterations. Exists to be measured, not used in production paths.
-3. **Safeguarded Newton:** Manaster-Koehler start `s0 = sqrt(2 |x|)`; if `|x| < 1e-8` use `s0 = 0.2 sqrt(T)`. Maintain a sign bracket. Take the Newton step only if it stays inside the bracket and `dc/ds > vega_min` (named constant, justified); otherwise bisect. Converge when `|c(s) - c_target| <= 4 eps c_target` or bracket width `<= 4 eps s`.
+3. **Safeguarded Newton:** Manaster-Koehler start `s0 = sqrt(2 |x|)`; if `|x| < 1e-8` use `s0 = 0.2 sqrt(T)`. Maintain a sign bracket. Take the Newton step only if it stays inside the bracket, `dc/ds > vega_min` (named constant, justified), and (Phase 3 amendment) it is less than half the previous step, the progress test of Numerical Recipes' rtsafe; otherwise bisect. Without the progress test, 30 of the 520 §6.4 round-trip cases hit the iteration cap: deep out of the money, Newton crawls inside the bracket because c / c' ~ s^3 / x^2. Converge when `|c(s) - c_target| <= 4 eps c_target` or bracket width `<= 4 eps s`.
 4. **Oracle:** Jäckel's Let's Be Rational via `py_lets_be_rational` (MIT). Expected call: `implied_volatility_from_a_transformed_rational_guess(price, F, K, T, q)` with undiscounted price and q = +1 call, -1 put. Confirm the signature and conventions in a test before relying on it.
 
 ### 6.4 Tests
