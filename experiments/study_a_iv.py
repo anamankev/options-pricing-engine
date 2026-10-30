@@ -93,6 +93,18 @@ def well_posed(c_target: float, F: float, K: float) -> bool:
     return c_target >= EPS * max(F, K)
 
 
+SMALLEST_NORMAL = sys.float_info.min
+
+
+def informative(c_target: float, kappa: float) -> bool:
+    """Post-hoc region (not pre-registered; docs/notes/study_a.md, section 4): the float64 target
+    carries information about s, i.e. it is a normal float and the attainable relative error
+    kappa eps is below 1. SPEC 10's rule labels in-the-money prices whose time value is lost in
+    the rounding of the intrinsic value as well posed, and solvable deep out-of-the-money prices
+    as ill posed."""
+    return c_target >= SMALLEST_NORMAL and kappa * EPS < 1.0
+
+
 # --- Solving ------------------------------------------------------------------------------
 
 
@@ -167,6 +179,7 @@ def run(config: dict[str, Any]) -> list[dict[str, Any]]:
                     "K": K,
                     **t,
                     "well_posed": well_posed(t["c_target"], F, K),
+                    "informative": informative(t["c_target"], t["kappa"]),
                 }
                 for method in config["methods"]:
                     solve = make_solver(method, theta, t["c_target"], F, K, T)
@@ -194,9 +207,18 @@ def _median(values: np.ndarray) -> float | None:
 
 
 def analyse(config: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Registered analysis on SPEC 10's well-posed region, and the same checks on the post-hoc
+    informative region."""
+    return {
+        "registered": _evaluate(config, rows, "well_posed"),
+        "post_hoc_informative": _evaluate(config, rows, "informative"),
+    }
+
+
+def _evaluate(config: dict[str, Any], rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
     checks, methods = config["checks"], config["methods"]
-    wp = [r for r in rows if r["well_posed"]]
-    ill = [r for r in rows if not r["well_posed"]]
+    wp = [r for r in rows if r[key]]
+    ill = [r for r in rows if not r[key]]
 
     per_method: dict[str, Any] = {}
     for m in methods:
@@ -312,11 +334,21 @@ def _matrix(
     return out
 
 
-def _well_posed_mask(
-    rows: list[dict[str, Any]], xs: list[float], ss: list[float], option: str
+def _region_mask(
+    rows: list[dict[str, Any]], xs: list[float], ss: list[float], option: str, key: str
 ) -> np.ndarray:
     index = {(r["x"], r["s"]): r for r in rows if r["option_type"] == option}
-    return np.array([[1.0 if index[(x, s)]["well_posed"] else 0.0 for x in xs] for s in ss])
+    return np.array([[1.0 if index[(x, s)][key] else 0.0 for x in xs] for s in ss])
+
+
+def _boundaries(
+    ax: Any, rows: list[dict[str, Any]], xs: list[float], ss: list[float], option: str
+) -> None:
+    """Solid: SPEC 10 well-posed boundary. Dashed: post-hoc informative boundary."""
+    log_s = np.log10(ss)
+    for key, style in (("well_posed", "solid"), ("informative", "dashed")):
+        mask = _region_mask(rows, xs, ss, option, key)
+        ax.contour(xs, log_s, mask, levels=[0.5], colors=INK, linewidths=1.0, linestyles=style)
 
 
 def _log_with_floor(values: np.ndarray, floor: float) -> np.ma.MaskedArray:
@@ -345,13 +377,12 @@ def plot_heatmaps(
     high = max(float(v.max()) for v in data.values() if v.count())
     vmin = math.log10(floor)
     for i, option in enumerate(config["option_types"]):
-        mask = _well_posed_mask(rows, xs, ss, option)
         for j, m in enumerate(config["methods"]):
             ax = axes[i, j]
             mesh = ax.pcolormesh(
                 xs, log_s, data[(option, m)], cmap=cmap, shading="nearest", vmin=vmin, vmax=high
             )
-            ax.contour(xs, log_s, mask, levels=[0.5], colors=INK, linewidths=1.0)
+            _boundaries(ax, rows, xs, ss, option)
             ax.set_title(f"{LABEL[m]}, {option.lower()}s", color=INK, fontsize=10, loc="left")
             ax.tick_params(colors=INK_2, labelsize=8)
             if i == 1:
@@ -366,8 +397,9 @@ def plot_heatmaps(
     )
     bar.ax.tick_params(colors=INK_2, labelsize=8)
     fig.suptitle(
-        f"{title}. Grey: no value returned. Black line: well-posed boundary "
-        f"(ill posed on the side where c < eps max(F, K)).",
+        f"{title}. Grey: no value returned. Solid line: SPEC 10 well-posed boundary "
+        "(ill posed where c < eps max(F, K)); dashed: informative region, post hoc "
+        "(normal c and kappa eps < 1).",
         color=INK,
         fontsize=11,
         x=0.01,
@@ -386,12 +418,11 @@ def plot_outcomes(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
     fig, axes = plt.subplots(2, 4, figsize=(16, 7.5), facecolor=SURFACE, sharex=True, sharey=True)
     for i, option in enumerate(config["option_types"]):
         index = {(r["x"], r["s"]): r for r in rows if r["option_type"] == option}
-        mask = _well_posed_mask(rows, xs, ss, option)
         for j, m in enumerate(config["methods"]):
             grid = np.array([[codes.get(index[(x, s)][f"{m}_outcome"], 2) for x in xs] for s in ss])
             ax = axes[i, j]
             ax.pcolormesh(xs, log_s, grid, cmap=cmap, norm=norm, shading="nearest")
-            ax.contour(xs, log_s, mask, levels=[0.5], colors=INK, linewidths=1.0)
+            _boundaries(ax, rows, xs, ss, option)
             ax.set_title(f"{LABEL[m]}, {option.lower()}s", color=INK, fontsize=10, loc="left")
             ax.tick_params(colors=INK_2, labelsize=8)
             if i == 1:
@@ -408,7 +439,8 @@ def plot_outcomes(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
         handles=handles, loc="lower center", ncol=4, frameon=False, fontsize=9, labelcolor=INK
     )
     fig.suptitle(
-        "Solver outcomes over the grid. Black line: well-posed boundary.",
+        "Solver outcomes over the grid. Solid line: SPEC 10 well-posed boundary; dashed: "
+        "informative region (post hoc).",
         color=INK,
         fontsize=11,
         x=0.01,
@@ -535,16 +567,18 @@ def main(argv: list[str] | None = None) -> int:
     plot_surfaces(config, rows, figures / "study_a_e_norm_3d.png")
 
     print(f"commit {env['commit'][:7]}{' (dirty)' if env['dirty'] else ''}")
-    print(json.dumps(analysis["stats"], indent=1, default=str))
-    for m, v in analysis["per_method"].items():
-        print(f"{m:20s} well-posed {v['outcomes_well_posed']}")
-        print(
-            f"{'':20s} e_norm median {v['e_norm_median']}, p99 {v['e_norm_p99']}; "
-            f"iterations median {v['iterations_median']}; time median {v['time_median_us']:.1f} us "
-            f"IQR {v['time_iqr_us'][0]:.1f}-{v['time_iqr_us'][1]:.1f}"
-        )
-    for name, passed in analysis["verdicts"].items():
-        print(f"{name}: {'SUPPORTED' if passed else 'REFUTED'}")
+    for label, part in analysis.items():
+        print(f"=== {label} ===")
+        print(json.dumps(part["stats"], indent=1, default=str))
+        for m, v in part["per_method"].items():
+            print(f"{m:20s} region {v['outcomes_well_posed']}")
+            print(
+                f"{'':20s} e_norm median {v['e_norm_median']}, p99 {v['e_norm_p99']}; iterations "
+                f"median {v['iterations_median']}; time median {v['time_median_us']:.1f} us "
+                f"IQR {v['time_iqr_us'][0]:.1f}-{v['time_iqr_us'][1]:.1f}"
+            )
+        for name, passed in part["verdicts"].items():
+            print(f"{name}: {'SUPPORTED' if passed else 'REFUTED'}")
     return 0
 
 

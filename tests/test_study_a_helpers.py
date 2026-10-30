@@ -72,3 +72,13 @@ def test_outcome_classes() -> None:
         raise InfeasiblePriceError("test")
 
     assert outcome("brent", infeasible, 1.0)["outcome"] == "INFEASIBLE"
+
+
+def test_informative_region_definition() -> None:
+    # Post hoc (docs/notes/study_a.md, section 4): a normal float target and kappa eps < 1.
+    from experiments.study_a_iv import informative
+
+    assert informative(1e-20, kappa=1e-6)  # tiny OTM price, well conditioned
+    assert not informative(50.0, kappa=1e17)  # ITM price whose time value is lost (kappa eps > 1)
+    assert not informative(1e-310, kappa=1e-6)  # subnormal target has lost precision
+    assert not informative(0.0, kappa=1e-6)

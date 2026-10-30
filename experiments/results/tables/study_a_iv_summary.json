@@ -1,0 +1,192 @@
+{
+  "config": {
+    "F": 100.0,
+    "T": 1.0,
+    "option_types": [
+      "CALL",
+      "PUT"
+    ],
+    "x": {
+      "start": -6.0,
+      "stop": 6.0,
+      "step": 0.25
+    },
+    "s": {
+      "low": 0.0001,
+      "high": 4.0,
+      "count": 60
+    },
+    "mp_digits": 50,
+    "methods": [
+      "brent",
+      "naive_newton",
+      "safeguarded_newton",
+      "lets_be_rational"
+    ],
+    "timing": {
+      "repeats": 50
+    },
+    "checks": {
+      "a1_fail_region": {
+        "s_max": 0.1,
+        "abs_x_min": 1.0,
+        "min_fraction": 0.5
+      },
+      "a1_calm_region": {
+        "s_min": 0.2,
+        "abs_x_max": 0.5,
+        "max_fraction": 0.1
+      },
+      "a2_min_median_iterations": 6,
+      "a2_small_s": 0.01,
+      "a2_min_median_enorm": 10.0,
+      "a3_max_median_enorm": 2.0,
+      "a3_max_p99_enorm": 20.0,
+      "a4_agreement_factor": 10.0,
+      "a4_min_agreeing_fraction": 0.9,
+      "a5_region": {
+        "abs_x_max": 0.5,
+        "s_max": 0.01
+      },
+      "a5_min_median_newton": 10.0,
+      "a5_max_median_lbr": 2.0
+    },
+    "output": {
+      "table_csv": "experiments/results/tables/study_a_iv.csv",
+      "summary_json": "experiments/results/tables/study_a_iv_summary.json",
+      "figure_dir": "experiments/results/figures"
+    }
+  },
+  "environment": {
+    "commit": "11383e4484e8c578c7f7cdd70784899ea2e42974",
+    "dirty": false,
+    "python": "3.12.15",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "libraries": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "mpmath": "1.4.1",
+      "matplotlib": "3.11.2",
+      "lets_be_rational": "1.1.2"
+    },
+    "timestamp_utc": "2026-10-30T20:06:46+00:00"
+  },
+  "per_method": {
+    "brent": {
+      "outcomes_well_posed": {
+        "CONVERGED": 1492,
+        "AT_LOWER_BOUND": 2196
+      },
+      "outcomes_ill_posed": {
+        "AT_LOWER_BOUND": 1752,
+        "CONVERGED": 440
+      },
+      "e_norm_median": 0.0,
+      "e_norm_p99": 201.365261993175,
+      "e_ulp_median": 4884802634037299.0,
+      "iterations_median": 0.0,
+      "iterations_max": 52.0,
+      "time_median_us": 0.875,
+      "time_iqr_us": [
+        0.875,
+        8.833
+      ]
+    },
+    "naive_newton": {
+      "outcomes_well_posed": {
+        "ZERO_DERIVATIVE": 1104,
+        "MAX_ITERATIONS": 64,
+        "CONVERGED": 230,
+        "DIVERGED": 94,
+        "AT_LOWER_BOUND": 2196
+      },
+      "outcomes_ill_posed": {
+        "AT_LOWER_BOUND": 1752,
+        "MAX_ITERATIONS": 204,
+        "ZERO_DERIVATIVE": 172,
+        "CONVERGED": 62,
+        "DIVERGED": 2
+      },
+      "e_norm_median": 0.0,
+      "e_norm_p99": 16.52032418961781,
+      "e_ulp_median": 6148882314689170.0,
+      "iterations_median": 0.0,
+      "iterations_max": 100.0,
+      "time_median_us": 0.875,
+      "time_iqr_us": [
+        0.875,
+        2.4165
+      ]
+    },
+    "safeguarded_newton": {
+      "outcomes_well_posed": {
+        "CONVERGED": 1492,
+        "AT_LOWER_BOUND": 2196
+      },
+      "outcomes_ill_posed": {
+        "AT_LOWER_BOUND": 1752,
+        "CONVERGED": 440
+      },
+      "e_norm_median": 0.0,
+      "e_norm_p99": 122.91537099114889,
+      "e_ulp_median": 4884802634037299.0,
+      "iterations_median": 0.0,
+      "iterations_max": 65.0,
+      "time_median_us": 0.875,
+      "time_iqr_us": [
+        0.875,
+        4.0
+      ]
+    },
+    "lets_be_rational": {
+      "outcomes_well_posed": {
+        "CONVERGED": 1508,
+        "AT_LOWER_BOUND": 2180
+      },
+      "outcomes_ill_posed": {
+        "AT_LOWER_BOUND": 1752,
+        "CONVERGED": 440
+      },
+      "e_norm_median": 0.0,
+      "e_norm_p99": 1.6181302382501213,
+      "e_ulp_median": 4884802634037299.0,
+      "iterations_median": 2.0,
+      "iterations_max": 2.0,
+      "time_median_us": 0.458,
+      "time_iqr_us": [
+        0.458,
+        6.0
+      ]
+    }
+  },
+  "stats": {
+    "n_points": 5880,
+    "n_well_posed": 3688,
+    "n_ill_posed": 2192,
+    "n_zero_target": 1752,
+    "n_positive_ill_posed": 440,
+    "a1_fail_fraction": 0.0,
+    "a1_fail_n": 1638,
+    "a1_calm_fraction": 0.3058823529411765,
+    "a1_calm_n": 170,
+    "a2_bad_outcomes": 0,
+    "a2_small_s_brent_median_enorm": 0.0,
+    "a4_zero_recovered": 0,
+    "a4_comparable_n": 440,
+    "a4_agreeing_fraction": 0.26590909090909093,
+    "a5_n": 156,
+    "a5_newton_median_enorm": 0.0,
+    "a5_lbr_median_enorm": 0.0
+  },
+  "verdicts": {
+    "A1": false,
+    "A2a": true,
+    "A2b": false,
+    "A2c": false,
+    "A3": true,
+    "A4i": true,
+    "A4ii": false,
+    "A5": false
+  }
+}
