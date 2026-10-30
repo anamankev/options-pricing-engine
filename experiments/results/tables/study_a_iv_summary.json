@@ -58,7 +58,7 @@
     }
   },
   "environment": {
-    "commit": "26119f0c1e68891d0d39065dac8e99f72e0c66e3",
+    "commit": "ef8824d7c6fdabe9b8dc00a8b7c558a8254b69e6",
     "dirty": false,
     "python": "3.12.15",
     "platform": "macOS-26.6-arm64-arm-64bit",
@@ -70,7 +70,7 @@
       "matplotlib": "3.11.2",
       "lets_be_rational": "1.1.2"
     },
-    "timestamp_utc": "2026-10-30T20:11:37+00:00"
+    "timestamp_utc": "2026-10-30T20:11:58+00:00"
   },
   "registered": {
     "per_method": {
@@ -90,8 +90,8 @@
         "iterations_max": 52.0,
         "time_median_us": 0.875,
         "time_iqr_us": [
-          0.875,
-          8.917
+          0.834,
+          8.75
         ]
       },
       "naive_newton": {
@@ -116,8 +116,8 @@
         "iterations_max": 100.0,
         "time_median_us": 0.875,
         "time_iqr_us": [
-          0.875,
-          2.417
+          0.834,
+          2.416
         ]
       },
       "safeguarded_newton": {
@@ -136,8 +136,8 @@
         "iterations_max": 65.0,
         "time_median_us": 0.875,
         "time_iqr_us": [
-          0.875,
-          4.025625
+          0.8335,
+          4.0
         ]
       },
       "lets_be_rational": {
@@ -157,7 +157,7 @@
         "time_median_us": 0.458,
         "time_iqr_us": [
           0.458,
-          6.041125
+          6.0
         ]
       }
     },
@@ -207,10 +207,10 @@
         "e_ulp_median": 5.0,
         "iterations_median": 12.0,
         "iterations_max": 52.0,
-        "time_median_us": 10.125,
+        "time_median_us": 9.9585,
         "time_iqr_us": [
-          8.5,
-          13.375
+          8.380125,
+          13.119875
         ]
       },
       "naive_newton": {
@@ -232,8 +232,8 @@
         "iterations_max": 100.0,
         "time_median_us": 2.417,
         "time_iqr_us": [
-          2.416,
-          3.708
+          2.375,
+          3.667
         ]
       },
       "safeguarded_newton": {
@@ -250,10 +250,10 @@
         "e_ulp_median": 6.0,
         "iterations_median": 9.0,
         "iterations_max": 67.0,
-        "time_median_us": 5.583,
+        "time_median_us": 5.5,
         "time_iqr_us": [
-          3.959,
-          9.0
+          3.958,
+          8.917
         ]
       },
       "lets_be_rational": {
@@ -270,10 +270,10 @@
         "e_ulp_median": 1.0,
         "iterations_median": 2.0,
         "iterations_max": 2.0,
-        "time_median_us": 6.667,
+        "time_median_us": 6.625,
         "time_iqr_us": [
-          5.625,
-          7.416
+          5.584,
+          7.375
         ]
       }
     },
