@@ -38,7 +38,6 @@ from experiments.provenance import environment
 from pricing.contracts import OptionType
 from pricing.errors import InfeasiblePriceError
 from pricing.implied_vol import IVMethod, solve_black
-from pricing.oracles import lbr_implied_volatility
 
 EPS = sys.float_info.epsilon
 LIBRARIES = ("numpy", "scipy", "mpmath", "matplotlib", "lets_be_rational")
@@ -114,6 +113,9 @@ def make_solver(
 ) -> Callable[[], Any]:
     option_type = OptionType.CALL if theta == 1 else OptionType.PUT
     if method == "lets_be_rational":
+        # Imported on use: pricing.oracles needs the oracle extra, which CI's fast job lacks.
+        from pricing.oracles import lbr_implied_volatility
+
         return lambda: lbr_implied_volatility(option_type, c, F=F, K=K, T=T)
     iv_method = IVMethod(method)
     return lambda: solve_black(option_type, c, F=F, K=K, T=T, method=iv_method)
