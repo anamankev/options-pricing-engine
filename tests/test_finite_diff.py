@@ -6,7 +6,13 @@ import math
 import numpy as np
 import pytest
 
-from pricing.finite_diff import central_first, central_second, relative_step
+from pricing.finite_diff import (
+    central_first,
+    central_second,
+    forward_first,
+    forward_first_order2,
+    relative_step,
+)
 
 EPS = float(np.finfo(np.float64).eps)
 
@@ -69,3 +75,52 @@ def test_step_below_resolution_of_x_raises() -> None:
     # spacing(1e8) is about 1.5e-8, so 1e8 + 1e-9 == 1e8: no step was taken at all.
     with pytest.raises(ValueError, match="below the floating-point resolution"):
         central_second(math.exp, 1e8, 1e-9)
+
+
+# --- One-sided differences (SPEC 7) -------------------------------------------------------------
+# Truncation models: forward first order (h / 2) f''; three-point forward -(h^2 / 3) f'''. On
+# polynomials these are exact up to rounding (~eps |f| / h <= 4e-13 here, as above).
+
+
+def test_forward_difference_truncation_error_is_half_h_f2_on_a_quadratic() -> None:
+    # f = x^2: (f(x + h) - f(x)) / h = 2x + h exactly.
+    x, h = 2.0, 1e-2
+    estimate = forward_first(lambda t: t**2, x, h)
+    assert abs(estimate - (2 * x + h)) <= FIRST_ROUNDING_TOL
+
+
+def test_three_point_forward_difference_is_exact_on_quadratics() -> None:
+    x, h = 2.0, 1e-2
+    assert abs(forward_first_order2(lambda t: t**2, x, h) - 2 * x) <= FIRST_ROUNDING_TOL
+
+
+def test_three_point_forward_difference_error_is_minus_h_squared_f3_over_3() -> None:
+    # f = x^3, f''' = 6: error -(h^2 / 3) 6 = -2 h^2.
+    x, h = 2.0, 1e-2
+    estimate = forward_first_order2(lambda t: t**3, x, h)
+    assert abs(estimate - (3 * x**2 - 2 * h**2)) <= FIRST_ROUNDING_TOL
+
+
+def test_one_sided_differences_use_the_steps_actually_taken() -> None:
+    x, h = 0.1, 1e-7  # x + h is rounded (see test_divides_by_the_step_actually_taken)
+    assert forward_first(lambda t: t, x, h) == 1.0
+    assert forward_first_order2(lambda t: t, x, h) == pytest.approx(1.0, abs=4 * EPS)
+
+
+def test_one_sided_differences_only_look_forward() -> None:
+    # Defined at the edge of the domain: f is never evaluated below x.
+    calls: list[float] = []
+
+    def f(t: float) -> float:
+        calls.append(t)
+        return math.sqrt(t)
+
+    forward_first(f, 0.0, 1e-4)
+    forward_first_order2(f, 0.0, 1e-4)
+    assert min(calls) == 0.0
+
+
+@pytest.mark.parametrize("h", [0.0, -1e-3, math.nan])
+def test_one_sided_differences_reject_bad_steps(h: float) -> None:
+    with pytest.raises(ValueError, match="must be > 0"):
+        forward_first(math.exp, 1.0, h)
