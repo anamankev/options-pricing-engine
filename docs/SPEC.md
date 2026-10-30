@@ -206,8 +206,8 @@ Round trip price to IV to price over x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 
 - American: `QdFpAmericanEngine` (Andersen-Lake-Offengenden) high-precision scheme as the Study B oracle. Availability in the Python wheel is unverified: the first oracle test imports it and fails loudly if absent. Fallback: BBSR at N = 2^15 cross-checked with LR at N = 32769, agreement < 1e-6.
 - `BinomialVanillaEngine` ("crr", N) cross-checks our CRR at identical N (expect agreement near machine precision).
 
-### 8.2 py_vollib and py_lets_be_rational
-Second implementation for BSM prices and the IV oracle (§6.3). Pin versions.
+### 8.2 vollib and py_lets_be_rational
+Second implementation for BSM prices and the IV oracle (§6.3). Pin versions. `vollib` is the current name of `py_vollib`: since 1.0.12, `py_vollib` is a shim whose import raises `DeprecationWarning` (Phase 0 finding, 30 October 2026).
 
 ### 8.3 mpmath
 Study A computes target prices at 50 significant digits before rounding to float64, separating pricing error from solver error.
@@ -311,7 +311,7 @@ options-pricing-engine/
 ```
 
 ### 13.2 Tooling (all free)
-Python 3.11+; NumPy, SciPy, Matplotlib, mpmath; pytest, Hypothesis, pytest-benchmark; Ruff; mypy (strict on `src/`); QuantLib, py_lets_be_rational, py_vollib for oracles. Constrain versions in `pyproject.toml` (e.g. `numpy>=2.0,<3`); record exact versions in every experiment output.
+Python 3.11+; NumPy, SciPy, Matplotlib, mpmath; pytest, Hypothesis, pytest-benchmark; Ruff; mypy (strict on `src/`); QuantLib, py_lets_be_rational, vollib for oracles. Constrain versions in `pyproject.toml` (e.g. `numpy>=2.0,<3`); record exact versions in every experiment output.
 
 ### 13.3 CI
 GitHub Actions on a public repository (free for standard hosted runners). Push and pull request: Ruff, mypy, fast tests on Python 3.11 and 3.12. Manual `workflow_dispatch`: full suite including slow, statistical, and oracle tests.
@@ -362,7 +362,6 @@ Record exact page or equation numbers in docstrings and notes for every formula 
 ## 17. Open verification items
 - R2, R3 (Haug) and R4b (Ju-Zhong 0.852): reproduced numerically during spec review; confirm printed values in the primary sources if copies are available.
 - Hull edition and page for R1.
-- `QdFpAmericanEngine` availability and scheme API in the QuantLib Python wheel.
-- `py_lets_be_rational` function signature and price convention in the installed version.
-- Leisen-Reimer formulas (§4.2): numerically consistent with O(1/N^2); confirm equation numbers in the original paper.
+- `QdFpAmericanEngine` scheme API in the QuantLib Python wheel. Availability observed in Phase 0 (30 October 2026): QuantLib 1.44 exposes `QdFpAmericanEngine`, `QdFpLegendreScheme`, `QdFpLegendreTanhSinhScheme`, `QdFpTanhSinhIterationScheme` and `QdFpIterationScheme`. Presence only; no price has been checked.
+- `py_lets_be_rational` function signature and price convention in the installed version. Phase 0 found two installed implementations from the same upstream repository with diverged code: `py_lets_be_rational` 1.1.2 and `lets_be_rational` 1.1.2 (a dependency of `vollib`). Choose one for Study A and pin it (Phase 3).- Leisen-Reimer formulas (§4.2): numerically consistent with O(1/N^2); confirm equation numbers in the original paper.
 - Jäckel (2015) test cases, if obtainable, as extra Study A anchors.

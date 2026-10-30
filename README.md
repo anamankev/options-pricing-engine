@@ -8,7 +8,7 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phase 0 of 6 (environment and tooling). No pricing code yet. See SPEC §14 for the phase plan.
+Phase 0 (environment and tooling) is complete. Phase 1 (Black-Scholes-Merton reference engine) is next. No pricing code yet. See SPEC §14 for the phase plan and `docs/notes/phase_0_environment.md` for the Phase 0 record.
 
 ## Scope
 

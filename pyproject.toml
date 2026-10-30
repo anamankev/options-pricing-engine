@@ -29,8 +29,7 @@ dev = [
 oracle = [
     "QuantLib>=1.40,<2",
     "py_lets_be_rational>=1.1,<2",
-    # SPEC 8.2 names py_vollib; since 1.0.12 that is a shim over vollib (same repo and license)
-    # whose import raises DeprecationWarning, so we depend on vollib directly.
+    # vollib is the current name of py_vollib, now a shim that warns on import (SPEC 8.2).
     "vollib>=1.0.11,<2",
 ]
 
