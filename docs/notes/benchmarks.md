@@ -79,7 +79,7 @@ Post-hoc analysis of tree scaling (not pre-registered).
 - P4: SUPPORTED. At n = 1e6, antithetic costs 7.4 ns per path against plain's 9.1 ns.
 
 ## 6. Interpretation
-- **The trees are O(N^2) in work but not yet in time at these step counts.** Each of the N layers runs a few NumPy operations with a fixed dispatch cost of several microseconds, plus about 1 to 2 ns per node.
+- **The trees are O(N^2) in work but not yet in time at these step counts.** Each of the N layers runs a few NumPy operations with a fixed cost of about 1 to 6 us, plus about 0.2 ns (European) to 2 ns (American) per node.
   - Below roughly 2,000 to 3,000 steps for American trees, and several thousand for European ones, the per-layer cost dominates and runtime grows close to linearly. The local exponents climb toward 2 as N grows.
   - American layers cost about ten times more per node than European ones, because the node prices are recomputed with exp at every layer. That brings them into the quadratic regime sooner.
   - SPEC 4's O(N^2) is the asymptotic statement; the registered hypothesis wrongly assumed it would already hold at N = 400.
@@ -89,7 +89,7 @@ Post-hoc analysis of tree scaling (not pre-registered).
 
 ## 7. Limitations and threats to validity
 - One machine, one Python build, single-threaded NumPy (SPEC 15): not evidence of production performance.
-- Wall-clock medians with the collector paused. Other processes on the machine were not controlled beyond running the benchmark alone; IQRs were narrow (typically under 2%).
+- Wall-clock medians with the collector paused. Other processes on the machine were not controlled beyond running the benchmark alone; The IQR was 1.5% of the median for the median measurement, 3.3% at the 90th percentile and 12.3% at worst.
 - Trees were timed on one American put case; runtime depends on N and method, not on market parameters, but exercise style matters (American layers do more work).
 - The post-hoc scaling model is descriptive and was chosen after seeing the data.
 
