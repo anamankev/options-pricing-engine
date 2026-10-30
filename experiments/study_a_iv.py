@@ -215,6 +215,16 @@ def analyse(config: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any
     }
 
 
+def _at_least(value: float | None, threshold: float) -> bool:
+    """A statistic over an empty region (None) supports nothing. Explicit None checks: a value of
+    exactly 0.0 is falsy, and an earlier `value or default` form misjudged it."""
+    return value is not None and value >= threshold
+
+
+def _at_most(value: float | None, threshold: float) -> bool:
+    return value is not None and value <= threshold
+
+
 def _evaluate(config: dict[str, Any], rows: list[dict[str, Any]], key: str) -> dict[str, Any]:
     checks, methods = config["checks"], config["methods"]
     wp = [r for r in rows if r[key]]
@@ -305,14 +315,14 @@ def _evaluate(config: dict[str, Any], rows: list[dict[str, Any]], key: str) -> d
         and stats["a1_calm_fraction"] <= checks["a1_calm_region"]["max_fraction"],
         "A2a": stats["a2_bad_outcomes"] == 0,
         "A2b": per_method["brent"]["iterations_median"] >= checks["a2_min_median_iterations"],
-        "A2c": (stats["a2_small_s_brent_median_enorm"] or 0.0) >= checks["a2_min_median_enorm"],
+        "A2c": _at_least(stats["a2_small_s_brent_median_enorm"], checks["a2_min_median_enorm"]),
         "A3": lbr["e_norm_median"] <= checks["a3_max_median_enorm"]
         and lbr["e_norm_p99"] <= checks["a3_max_p99_enorm"],
         "A4i": stats["a4_zero_recovered"] == 0,
         "A4ii": stats["a4_agreeing_fraction"] is not None
         and stats["a4_agreeing_fraction"] >= checks["a4_min_agreeing_fraction"],
-        "A5": (stats["a5_newton_median_enorm"] or 0.0) >= checks["a5_min_median_newton"]
-        and (stats["a5_lbr_median_enorm"] or math.inf) <= checks["a5_max_median_lbr"],
+        "A5": _at_least(stats["a5_newton_median_enorm"], checks["a5_min_median_newton"])
+        and _at_most(stats["a5_lbr_median_enorm"], checks["a5_max_median_lbr"]),
     }
     return {"per_method": per_method, "stats": stats, "verdicts": verdicts}
 

@@ -82,3 +82,13 @@ def test_informative_region_definition() -> None:
     assert not informative(50.0, kappa=1e17)  # ITM price whose time value is lost (kappa eps > 1)
     assert not informative(1e-310, kappa=1e-6)  # subnormal target has lost precision
     assert not informative(0.0, kappa=1e-6)
+
+
+def test_threshold_checks_treat_zero_as_a_value() -> None:
+    # Regression: a median of exactly 0.0 once failed an "at most" check through `value or inf`.
+    from experiments.study_a_iv import _at_least, _at_most
+
+    assert _at_most(0.0, 2.0)
+    assert not _at_least(0.0, 10.0)
+    assert not _at_most(None, 2.0)
+    assert not _at_least(None, 10.0)
