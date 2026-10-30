@@ -1,6 +1,7 @@
 """Binomial trees (SPEC 4): parameters, validity, convergence to BSM, American exercise."""
 
 import dataclasses
+import itertools
 import math
 from typing import Any
 
@@ -10,7 +11,7 @@ import pytest
 
 from pricing import binomial as bt
 from pricing import black_scholes as bs
-from pricing.contracts import ExerciseStyle, OptionType
+from pricing.contracts import ExerciseStyle, OptionType, option_sign
 from pricing.errors import PricingInputError, TreeParameterError
 
 CALL, PUT = OptionType.CALL, OptionType.PUT
@@ -185,3 +186,136 @@ def test_american_put_exercise_boundary() -> None:
 def test_boundary_is_only_recorded_for_american_when_requested() -> None:
     assert bt.crr(PUT, **R4_PUT, n_steps=20, record_boundary=True).exercise_boundary is None
     assert bt.crr(PUT, **R4_PUT, n_steps=20, exercise=AMERICAN).exercise_boundary is None
+
+
+# --- SPEC 4.2: Leisen-Reimer --------------------------------------------------------------
+
+# R2: Haug (2007), 2nd ed., p. 4 (SPEC 9.1); a case with a dividend yield.
+R2: dict[str, Any] = {"S": 100.0, "K": 95.0, "T": 0.5, "r": 0.10, "q": 0.05, "sigma": 0.20}
+# LR's European error is O(1/N^2) for odd N (SPEC 4.2). Observed N^2 |error| = 0.036 (R1) and
+# 0.151 (R2) for N = 101 ... 801; 0.5 leaves more than 3x margin.
+LR_ERROR_CONSTANT = 0.5
+# BBS's error is O(1/N) without oscillation (Broadie and Detemple 1996). Observed N |error| <= 0.35
+# on R1 and R2 for N = 64 ... 512; 1.0 leaves ~3x margin.
+BBS_ERROR_CONSTANT = 1.0
+# h(z) + (1 - h(z)) = 1 up to one rounding of the sum.
+PP_SUM_TOL = 2 * EPS
+# Richardson on an exact c N^-2 sequence leaves only rounding of a 4-term combination.
+RICHARDSON_TOL = 16 * EPS
+
+
+def test_lr_needs_odd_steps() -> None:
+    with pytest.raises(TreeParameterError, match="odd"):
+        bt.leisen_reimer(CALL, **R1, n_steps=100)
+
+
+def test_peizer_pratt_inversion_is_symmetric_and_centred() -> None:
+    assert bt._peizer_pratt_2(0.0, 101) == (0.5, 0.5)
+    previous = 0.0
+    for z in (-5.0, -0.3, 0.7, 4.0):
+        h, one_minus_h = bt._peizer_pratt_2(z, 101)
+        assert bt._peizer_pratt_2(-z, 101) == (one_minus_h, h)  # h(-z) = 1 - h(z)
+        assert abs(h + one_minus_h - 1.0) <= PP_SUM_TOL
+        assert h > previous  # increasing in z
+        previous = h
+
+
+def test_peizer_pratt_tail_keeps_relative_precision() -> None:
+    # z = 30, n = 3: exp(-x) ~ 1e-110, so 1 - h computed as 1 - (1/2 + sqrt(...)/2) is exactly 0.
+    # The rewritten form keeps it. Expected value: mpmath at 50 significant digits.
+    z, n = 30.0, 3
+    h, one_minus_h = bt._peizer_pratt_2(z, n)
+    assert 1.0 - h == 0.0  # what the naive subtraction would return
+    with mpmath.workdps(50):
+        t = mpmath.mpf(z) / (n + mpmath.mpf(1) / 3 + mpmath.mpf("0.1") / (n + 1))
+        exact = (1 - mpmath.sqrt(1 - mpmath.exp(-t * t * (n + mpmath.mpf(1) / 6)))) / 2
+    assert one_minus_h == pytest.approx(float(exact), rel=STABLE_P_RTOL)
+
+
+def test_lr_parameters_satisfy_the_martingale_condition() -> None:
+    res = bt.leisen_reimer(CALL, **R2, n_steps=101)
+    g = math.exp((0.10 - 0.05) * res.dt)
+    assert res.p_up * res.up + (1 - res.p_up) * res.down == pytest.approx(g, rel=MARTINGALE_RTOL)
+    assert res.down < g < res.up
+
+
+@pytest.mark.parametrize(("case", "option_type"), [(R1, CALL), (R1, PUT), (R2, CALL), (R2, PUT)])
+@pytest.mark.parametrize("n_steps", [101, 201, 401, 801])
+def test_lr_european_error_is_order_one_over_n_squared(
+    case: dict[str, Any], option_type: OptionType, n_steps: int
+) -> None:
+    error = bt.leisen_reimer(option_type, **case, n_steps=n_steps).value - bs.price(
+        option_type, **case
+    )
+    assert abs(error) <= LR_ERROR_CONSTANT / n_steps**2
+
+
+def test_lr_error_is_monotone_in_n() -> None:
+    # A monotone error is what makes Richardson extrapolation legitimate for LR (SPEC 4.5).
+    exact = bs.price(CALL, **R1)
+    errors = [bt.leisen_reimer(CALL, **R1, n_steps=n).value - exact for n in (101, 201, 401, 801)]
+    assert all(e < 0 for e in errors)
+    assert all(abs(a) > abs(b) for a, b in itertools.pairwise(errors))
+
+
+# --- SPEC 4.3: BBS and BBSR ---------------------------------------------------------------
+
+
+@pytest.mark.parametrize("option_type", [CALL, PUT])
+def test_bbs_with_one_step_is_black_scholes(option_type: OptionType) -> None:
+    # With N = 1 the only layer before expiry is t = 0, which BBS fills with the BSM value.
+    assert bt.bbs(option_type, **R2, n_steps=1).value == bs.price(option_type, **R2)
+    intrinsic = max(option_sign(option_type) * (R2["S"] - R2["K"]), 0.0)
+    american = bt.bbs(option_type, **R2, n_steps=1, exercise=AMERICAN).value
+    assert american == max(intrinsic, bs.price(option_type, **R2))
+
+
+@pytest.mark.parametrize(("case", "option_type"), [(R1, CALL), (R2, PUT)])
+def test_bbs_error_is_order_one_over_n_without_sign_changes(
+    case: dict[str, Any], option_type: OptionType
+) -> None:
+    exact = bs.price(option_type, **case)
+    errors = {n: bt.bbs(option_type, **case, n_steps=n).value - exact for n in (64, 128, 256, 512)}
+    assert all(abs(e) <= BBS_ERROR_CONSTANT / n for n, e in errors.items())
+    assert len({e > 0 for e in errors.values()}) == 1  # one sign, unlike CRR
+
+
+@pytest.mark.parametrize(("case", "option_type"), [(R1, CALL), (R2, PUT)])
+@pytest.mark.parametrize("n_steps", [64, 128, 256, 512])
+def test_bbsr_beats_bbs_at_the_same_n(
+    case: dict[str, Any], option_type: OptionType, n_steps: int
+) -> None:
+    exact = bs.price(option_type, **case)
+    bbsr = bt.bbsr(option_type, **case, n_steps=n_steps)
+    assert abs(bbsr.value - exact) < abs(bt.bbs(option_type, **case, n_steps=n_steps).value - exact)
+    assert bbsr.components is not None
+    full, half = bbsr.components
+    assert bbsr.value == 2 * full - half  # SPEC 4.3
+
+
+def test_bbsr_needs_even_steps() -> None:
+    with pytest.raises(TreeParameterError, match="even"):
+        bt.bbsr(CALL, **R1, n_steps=101)
+
+
+def test_richardson_cancels_the_leading_error_term() -> None:
+    # V(N) = 3 + 0.7 N^-2 exactly: extrapolating V(10) and V(20) with order 2 recovers 3.
+    def v(n: int) -> float:
+        return 3.0 + 0.7 / n**2
+
+    assert abs(bt.richardson(v(10), v(20), order=2.0) - 3.0) <= RICHARDSON_TOL * 3.0
+    with pytest.raises(ValueError, match="order"):
+        bt.richardson(v(10), v(20), order=0.0)
+
+
+@pytest.mark.parametrize("method", [bt.leisen_reimer, bt.bbs])
+def test_american_is_worth_at_least_european_for_lr_and_bbs(method: Any) -> None:
+    eu = method(PUT, **R4_PUT, n_steps=301).value
+    am = method(PUT, **R4_PUT, n_steps=301, exercise=AMERICAN).value
+    assert am >= eu
+
+
+def test_bbs_records_a_boundary_entry_per_layer() -> None:
+    res = bt.bbs(PUT, **R4_PUT, n_steps=50, exercise=AMERICAN, record_boundary=True)
+    assert res.exercise_boundary is not None
+    assert len(res.exercise_boundary) == 50

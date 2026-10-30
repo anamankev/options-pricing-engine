@@ -21,6 +21,26 @@ sinh and expm1, so p keeps full relative precision. Node prices are S exp(j ln u
 for n steps and j up-moves, evaluated directly at every layer rather than by repeated division,
 which would accumulate rounding over N layers.
 
+Leisen-Reimer (Leisen and Reimer 1996; SPEC 4.2). N odd. With d1, d2 from SPEC 3.1 for the full
+maturity and the Peizer-Pratt method-2 inversion
+    h(z) = 1/2 + sign(z) (1/2) sqrt(1 - exp(-(z / (N + 1/3 + 0.1 / (N + 1)))^2 (N + 1/6))),
+    p = h(d2),  p_bar = h(d1),  u = g p_bar / p,  d = g (1 - p_bar) / (1 - p).
+The last form equals SPEC's d = (g - p u) / (1 - p) but avoids that subtraction; it also gives
+p u + (1 - p) d = g exactly. h and 1 - h are both computed without cancellation: 1 - h(z) for
+z > 0 is (1/2) exp(-x) / (1 + sqrt(1 - exp(-x))), which stays accurate when exp(-x) is tiny, the
+same issue as N(-x) versus 1 - N(x). The tree is centred on the strike, so its European error falls
+like 1/N^2 (SPEC 4.2; measured in Study B). Equation numbers in the paper: SPEC 17.
+
+BBS and BBSR (Broadie and Detemple 1996; SPEC 4.3). BBS is a CRR tree whose layer N - 1 holds the
+Black-Scholes European value over the last step dt (for American options, the larger of that and
+immediate exercise); induction proceeds as usual from there. This removes the payoff kink from the
+last step, which is where CRR's oscillation comes from. BBSR is two-point Richardson
+extrapolation, 2 V_BBS(N) - V_BBS(N / 2), for even N.
+
+Richardson extrapolation (SPEC 4.5). If V(N) = V + c N^(-p) + ..., then
+(2^p V(2N) - V(N)) / (2^p - 1) cancels the c term. Use it only where the error is monotone in N
+(LR with odd N, BBS); on raw CRR's odd/even oscillation it is unreliable.
+
 American exercise (SPEC 4.4): at every node V = max(continuation, theta (S_node - K)). The
 optional early-exercise boundary records, per layer, the critical stock price: the highest
 exercised node for a put, the lowest for a call, or None where no node is exercised.
@@ -28,11 +48,13 @@ exercised node for a put, the lowest for a call, or None where no node is exerci
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass
 
 import numpy as np
 
+from pricing import black_scholes as bs
 from pricing.contracts import (
     ExerciseStyle,
     FloatArray,
@@ -95,6 +117,156 @@ def crr(
     values = _payoff(lattice, _spots(lattice, lattice.n_steps))
     value, boundary = _roll_back(lattice, values, lattice.n_steps, exercise, record_boundary)
     return _result(value, "CRR", exercise, lattice, boundary)
+
+
+def leisen_reimer(
+    option_type: OptionType,
+    *,
+    S: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    sigma: float,
+    n_steps: int,
+    exercise: ExerciseStyle = ExerciseStyle.EUROPEAN,
+    record_boundary: bool = False,
+    allow_extreme_vol: bool = False,
+) -> TreeResult:
+    """Leisen-Reimer tree price, n_steps odd (SPEC 4.2, 4.4)."""
+    theta = option_sign(option_type)
+    m = _tree_inputs(S, K, T, r, q, sigma, allow_extreme_vol)
+    _check_steps(n_steps, odd=True)
+    dt = m.T / n_steps
+    s = m.sigma * math.sqrt(m.T)
+    d1 = (math.log(m.S / m.K) + (m.r - m.q) * m.T) / s + 0.5 * s
+    p, one_minus_p = _peizer_pratt_2(d1 - s, n_steps)
+    p_bar, one_minus_p_bar = _peizer_pratt_2(d1, n_steps)
+    carry = (m.r - m.q) * dt
+    ln_u = carry + _ln_probability(p_bar, one_minus_p_bar) - _ln_probability(p, one_minus_p)
+    ln_d = carry + _ln_probability(one_minus_p_bar, p_bar) - _ln_probability(one_minus_p, p)
+    _check_probability(p, "LR")
+    if not ln_d < carry < ln_u:
+        raise TreeParameterError(f"LR tree needs d < g < u; got ln d={ln_d!r}, ln u={ln_u!r}")
+    lattice = _Lattice(theta, m, n_steps, dt, ln_u, ln_d, p, math.exp(-m.r * dt))
+    values = _payoff(lattice, _spots(lattice, n_steps))
+    value, boundary = _roll_back(lattice, values, n_steps, exercise, record_boundary)
+    return _result(value, "LR", exercise, lattice, boundary)
+
+
+def _peizer_pratt_2(z: float, n: int) -> tuple[float, float]:
+    """(h(z), 1 - h(z)) for SPEC 4.2's Peizer-Pratt method-2 inversion, both without
+    cancellation."""
+    t = z / (n + 1.0 / 3.0 + 0.1 / (n + 1.0))
+    x = t * t * (n + 1.0 / 6.0)
+    root = math.sqrt(-math.expm1(-x))  # sqrt(1 - exp(-x))
+    small = 0.5 * math.exp(-x) / (1.0 + root)  # (1 - root) / 2, rewritten
+    large = 0.5 + 0.5 * root
+    return (large, small) if z > 0 else (small, large)
+
+
+def _ln_probability(p: float, one_minus_p: float) -> float:
+    """ln p, via log1p(-(1 - p)) when p is near 1 so no digits are lost."""
+    return math.log1p(-one_minus_p) if p > 0.5 else math.log(p)
+
+
+def bbs(
+    option_type: OptionType,
+    *,
+    S: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    sigma: float,
+    n_steps: int,
+    exercise: ExerciseStyle = ExerciseStyle.EUROPEAN,
+    record_boundary: bool = False,
+    allow_extreme_vol: bool = False,
+) -> TreeResult:
+    """Broadie-Detemple BBS: CRR with Black-Scholes values one step before expiry (SPEC 4.3)."""
+    lattice = _crr_lattice(option_type, S, K, T, r, q, sigma, n_steps, allow_extreme_vol)
+    m, last = lattice.m, lattice.n_steps - 1
+    spots = _spots(lattice, last)
+    values = np.asarray(
+        bs.price(
+            option_type,
+            S=spots,
+            K=m.K,
+            T=lattice.dt,
+            r=m.r,
+            q=m.q,
+            sigma=m.sigma,
+            allow_extreme_vol=allow_extreme_vol,
+        )
+    )
+    last_boundary: list[float | None] = []
+    if exercise is ExerciseStyle.AMERICAN:
+        intrinsic = lattice.theta * (spots - m.K)
+        exercised = intrinsic > values
+        values = np.where(exercised, intrinsic, values)
+        last_boundary = [_critical_spot(spots, exercised, lattice.theta)]
+    value, boundary = _roll_back(lattice, values, last, exercise, record_boundary)
+    if boundary is not None:
+        boundary = boundary + tuple(last_boundary)
+    return _result(value, "BBS", exercise, lattice, boundary)
+
+
+def bbsr(
+    option_type: OptionType,
+    *,
+    S: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    sigma: float,
+    n_steps: int,
+    exercise: ExerciseStyle = ExerciseStyle.EUROPEAN,
+    record_boundary: bool = False,
+    allow_extreme_vol: bool = False,
+) -> TreeResult:
+    """BBSR = 2 BBS(N) - BBS(N / 2), n_steps even (SPEC 4.3). Parameters are those of BBS(N)."""
+    _check_steps(n_steps, even=True)
+    full = bbs(
+        option_type,
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        q=q,
+        sigma=sigma,
+        n_steps=n_steps,
+        exercise=exercise,
+        record_boundary=record_boundary,
+        allow_extreme_vol=allow_extreme_vol,
+    )
+    half = bbs(
+        option_type,
+        S=S,
+        K=K,
+        T=T,
+        r=r,
+        q=q,
+        sigma=sigma,
+        n_steps=n_steps // 2,
+        exercise=exercise,
+        allow_extreme_vol=allow_extreme_vol,
+    )
+    return dataclasses.replace(
+        full,
+        value=richardson(half.value, full.value, order=1.0),
+        method="BBSR",
+        components=(full.value, half.value),
+    )
+
+
+def richardson(coarse: float, fine: float, *, order: float) -> float:
+    """Extrapolate V(N) (coarse) and V(2N) (fine) for an error c N^-order (SPEC 4.5)."""
+    if not order > 0.0:
+        raise ValueError(f"order must be > 0; got {order!r}")
+    weight = math.pow(2.0, order)
+    return (weight * fine - coarse) / (weight - 1.0)
 
 
 def _crr_lattice(
