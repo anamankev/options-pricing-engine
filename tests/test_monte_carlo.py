@@ -33,6 +33,10 @@ Z_LIMIT = 4.0
 # SE ratio between n = 1e3 and 1e5 should be 10. The sample sd at n = 1e3 has relative noise of a
 # few percent for these payoffs, so [8.5, 11.5] is a ~5 sigma band.
 SE_RATIO_BAND = (8.5, 11.5)
+# Antithetic pair members are negatively correlated, so counting them as independent misstates
+# the SE: by 35% on the case below (naive / correct = 1.346). A 5% gap is far outside rounding,
+# so the test detects whether the pairing is used.
+NAIVE_SE_MIN_GAP = 0.05
 
 
 def _child_rng(seed: int, index: int) -> np.random.Generator:
@@ -138,7 +142,7 @@ def test_antithetic_error_comes_from_pair_averages() -> None:
     assert res.std_error == pytest.approx(pairs.std(ddof=1) / math.sqrt(2500), rel=REBUILD_RTOL)
     # Treating the 5000 payoffs as independent would report a different (wrong) error.
     members = np.concatenate([_discounted_payoffs(ATM, 1, z), _discounted_payoffs(ATM, 1, -z)])
-    assert abs(members.std(ddof=1) / math.sqrt(5000) / res.std_error - 1) > 0.05
+    assert abs(members.std(ddof=1) / math.sqrt(5000) / res.std_error - 1) > NAIVE_SE_MIN_GAP
     assert res.n_payoff_evals == 5000
 
 

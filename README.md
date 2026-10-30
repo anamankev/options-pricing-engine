@@ -8,7 +8,7 @@ The full technical standard is [`docs/SPEC.md`](docs/SPEC.md).
 
 ## Status
 
-Phases 0 and 1 are complete: tooling, and the Black-Scholes-Merton reference engine (European prices and Greeks). Phase 2 (binomial trees with American exercise, Monte Carlo) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
+Phases 0 to 2 are complete: tooling; the Black-Scholes-Merton reference engine (European prices and Greeks); binomial trees (CRR, Leisen-Reimer, BBS, BBSR) with American exercise, and Monte Carlo with antithetic and control variates. Phase 3 (implied-volatility solvers, finite-difference bump study) is next. See SPEC §14 for the phase plan and `docs/notes/` for each phase's record.
 
 ## Usage
 
@@ -19,6 +19,40 @@ from pricing.contracts import OptionType
 # Hull, Options, Futures, and Other Derivatives, Example 15.6
 bs.price(OptionType.CALL, S=42.0, K=40.0, T=0.5, r=0.10, q=0.0, sigma=0.20)  # 4.759422392871536
 bs.vega(OptionType.CALL, S=42.0, K=40.0, T=0.5, r=0.10, q=0.0, sigma=0.20)  # 8.81 per 1.00 of sigma
+```
+
+```python
+from pricing import binomial as bt
+from pricing.contracts import ExerciseStyle, OptionType
+from pricing.monte_carlo import MCMethod, monte_carlo
+
+# Ju and Zhong (1999), Exhibit 3: American put, published 1.990
+bt.bbsr(
+    OptionType.PUT,
+    S=40.0,
+    K=40.0,
+    T=0.5833,
+    r=0.0488,
+    q=0.0,
+    sigma=0.2,
+    n_steps=2048,
+    exercise=ExerciseStyle.AMERICAN,
+).value  # 1.99047...
+
+res = monte_carlo(
+    OptionType.CALL,
+    S=100.0,
+    K=100.0,
+    T=1.0,
+    r=0.05,
+    q=0.02,
+    sigma=0.2,
+    n_paths=100_000,
+    seed=1,
+    method=MCMethod.CONTROL_VARIATE,
+    pilot_paths=10_000,
+)
+res.estimate, res.std_error, (res.ci_low, res.ci_high)
 ```
 
 Market inputs are keyword-only, so r and q cannot be swapped by position. Arrays broadcast like NumPy and return arrays; scalars return a float. Invalid inputs raise `PricingInputError` naming the parameter, and Greeks that do not exist (for example delta at expiry with S = K) raise `UndefinedGreekError`.
@@ -83,7 +117,7 @@ Full table: SPEC §2. In short: volatility `sigma` is an annualized decimal (0.2
 ## Layout
 
 ```
-src/pricing/      library: contracts, errors, black_scholes, finite_diff, oracles
+src/pricing/      library: contracts, errors, black_scholes, binomial, monte_carlo, finite_diff, oracles
 tests/            pytest suite; conftest.py holds the Hypothesis profiles
 docs/SPEC.md      technical standard
 docs/notes/       research notes (template: TEMPLATE.md)
@@ -96,11 +130,14 @@ experiments/      runnable studies, configs/, results/
 
 ## Results
 
-Validation of the Phase 1 engine (studies A and B have not run yet):
+Validation so far (studies A and B have not run yet):
 
 - **Against exact values:** prices agree with a 50-digit mpmath evaluation on 288 cases. The worst error is 0.76 times eps times the formula's error scale, inside a budget of 64 (`tests/test_black_scholes.py`).
 - **Greeks:** all six agree with finite differences to 5e-8 relative or better (`tests/test_black_scholes_greeks.py`).
 - **Against QuantLib 1.44, 1800 cases:** median relative agreement is 2e-16 to 1e-15. In far tails (|d1| >= 3.2) QuantLib loses relative precision, up to 100% against the exact value, while this library stays within 2.5e-10. Details: [`docs/notes/phase_1_quantlib_reconciliation.md`](docs/notes/phase_1_quantlib_reconciliation.md).
+- **American options:** all 18 Ju and Zhong (1999) benchmark values are reproduced within 2e-3 by two methods (Leisen-Reimer, N = 2001; BBSR, N = 2048). QuantLib's high-precision American engine agrees with BBSR at N = 16384 within 1.5e-6.
+- **Trees vs QuantLib:** Leisen-Reimer matches QuantLib's to 8.4e-12 relative. CRR differs by the O(1/N) error because QuantLib uses a different up-probability convention; with that convention substituted, ours matches to 8.1e-12. Details: [`docs/notes/phase_2_numerical_methods.md`](docs/notes/phase_2_numerical_methods.md).
+- **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000; at n = 100 deep out of the money it drops to 0.83. Control variates cut the cost of a given accuracy 44-fold in the money, but only 1.2-fold deep out of the money. Details: [`docs/notes/phase_2_mc_coverage.md`](docs/notes/phase_2_mc_coverage.md).
 
 ## What this project does not claim
 
