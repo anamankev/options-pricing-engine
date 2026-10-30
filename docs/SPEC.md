@@ -52,7 +52,7 @@ A model price is the discounted risk-neutral expectation of the payoff, conditio
 - BSM price and Greek functions accept Python floats or NumPy arrays and follow NumPy broadcasting. All-scalar inputs return `float`; any array input returns `np.ndarray` (float64) of the broadcast shape. Incompatible shapes raise NumPy's broadcasting `ValueError`, untouched.
 - Trees, Monte Carlo, and IV solvers take scalars and return frozen dataclasses (`TreeResult`, `MCResult`, `IVResult`) carrying the value plus diagnostics.
 - Type hints everywhere (`numpy.typing.NDArray[np.float64]`). `mypy --strict` on `src/`.
-- Pure functions. Randomness only through an explicit `numpy.random.Generator` argument.
+- Pure functions. Randomness only through an explicit, required seed. Phase 2 decision: Monte Carlo takes `seed` as an int or `numpy.random.SeedSequence` rather than a `Generator`, because §5.1 requires the result to record the seed that reproduces it and a Generator cannot report that. Child streams (main sample, pilot) are derived without mutating the caller's SeedSequence.
 
 ### 2.4 Exceptions (`src/pricing/errors.py`)
 - `PricingInputError(ValueError)`: NaN or inf, S <= 0, K <= 0, T < 0, sigma < 0, unsupported contract.
