@@ -78,7 +78,9 @@ Post-hoc analysis of the optimum (not pre-registered). The rule of thumb eta ~ e
 
 **Near expiry, one-sided differences pay their order.** The first-order forward difference's error falls only linearly with h, and its best error is about 1.6e-7 at eta = 1e-9. The three-point form recovers second order, with a best error of about 1.2e-9 at eta = 1e-7. Once h > T no central difference exists at all, which is the case SPEC 7's one-sided rule is for.
 
-The 3D surfaces show that the valley's position barely moves across S from 70 to 130. Away from the money its floor rises, because the Greek being approximated is smaller relative to the price's rounding.
+The 3D surfaces show that the valley's position barely moves across S from 70 to 130. Its floor behaves differently for the two Greeks, from the table rather than read off the 3D view:
+- Delta's best error rises away from the money, from 9e-13 at S = 100 to 2e-10 at S = 70 and 5e-11 at S = 130.
+- Gamma's best error varies irregularly between 5e-10 and 7e-8 with no clear trend in moneyness, because its floor sits in the noisy rounding regime.
 
 ## 7. Limitations and threats to validity
 - One contract (a call at T = 0.5, sigma = 0.25); bumps relative with x_scale = 1. Other scalings move the optimum.
