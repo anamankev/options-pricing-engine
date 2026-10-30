@@ -416,7 +416,7 @@ def plot_heatmaps(
             ax.pcolormesh(
                 xs,
                 log_s,
-                np.ma.masked_where(~uninformative, np.ones_like(values)),
+                np.ma.masked_where(~uninformative, np.ones(values.shape)),
                 cmap=pale,
                 shading="nearest",
             )
