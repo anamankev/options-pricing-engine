@@ -25,7 +25,7 @@ macOS or Linux:
 ```bash
 git clone https://github.com/anamankev/options-pricing-engine.git
 cd options-pricing-engine
-python3 -m venv .venv            # or python3.12 / python3.11 to pick a version
+python3.12 -m venv .venv         # CI tests 3.11 and 3.12; plain python3 may be newer
 source .venv/bin/activate
 python -m pip install --upgrade pip
 pip install -e ".[dev]"          # add the oracle extra for oracle tests: ".[dev,oracle]"
@@ -36,7 +36,7 @@ Windows (untested; CI runs on Linux):
 ```powershell
 git clone https://github.com/anamankev/options-pricing-engine.git
 cd options-pricing-engine
-py -m venv .venv
+py -3.12 -m venv .venv
 .venv\Scripts\activate
 python -m pip install --upgrade pip
 pip install -e ".[dev]"
