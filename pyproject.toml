@@ -25,6 +25,7 @@ dev = [
     "pytest-benchmark>=5,<6",
     "ruff>=0.17,<0.18",  # minor pinned: Ruff adds and changes rules between minor versions
     "mypy>=2.0,<3",
+    "scipy-stubs>=1.17,<2",  # types for scipy.special under mypy --strict
 ]
 oracle = [
     "QuantLib>=1.40,<2",
