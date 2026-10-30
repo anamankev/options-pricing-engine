@@ -37,6 +37,25 @@ class OptionType(enum.Enum):
     PUT = -1
 
 
+class ExerciseStyle(enum.Enum):
+    """European: exercise at T only. American: at any time up to T (SPEC 4.4)."""
+
+    EUROPEAN = "european"
+    AMERICAN = "american"
+
+
+@dataclass(frozen=True)
+class ScalarInputs:
+    """Validated scalar market inputs for trees, Monte Carlo and IV solvers (SPEC 2.3)."""
+
+    S: float
+    K: float
+    T: float
+    r: float
+    q: float
+    sigma: float
+
+
 @dataclass(frozen=True)
 class MarketInputs:
     """Validated market inputs as float64 arrays broadcast to one shape (SPEC 2.3)."""
@@ -95,6 +114,29 @@ def validate_market_inputs(
     S_b, K_b, T_b, r_b, q_b, sigma_b = np.broadcast_arrays(*arrays.values())
     all_scalar = all(np.ndim(v) == 0 and not isinstance(v, np.ndarray) for v in raw.values())
     return MarketInputs(S=S_b, K=K_b, T=T_b, r=r_b, q=q_b, sigma=sigma_b, all_scalar=all_scalar)
+
+
+def validate_scalar_inputs(
+    *,
+    S: float,
+    K: float,
+    T: float,
+    r: float,
+    q: float,
+    sigma: float,
+    allow_extreme_vol: bool,
+) -> ScalarInputs:
+    """validate_market_inputs for pricers that take scalars only (SPEC 2.3)."""
+    m = validate_market_inputs(
+        S=S, K=K, T=T, r=r, q=q, sigma=sigma, allow_extreme_vol=allow_extreme_vol
+    )
+    if not m.all_scalar:
+        raise PricingInputError(
+            "trees, Monte Carlo and implied-volatility solvers take scalar inputs (SPEC 2.3)"
+        )
+    return ScalarInputs(
+        S=float(m.S), K=float(m.K), T=float(m.T), r=float(m.r), q=float(m.q), sigma=float(m.sigma)
+    )
 
 
 def _as_float_array(name: str, value: npt.ArrayLike) -> FloatArray:
