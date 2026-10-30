@@ -53,6 +53,7 @@ LABEL = {
 # Reference palette of the data-viz method (light surface). Categorical slots 1 to 3 are validated
 # all-pairs for colour-vision deficiency; the sequential ramp is single-hue blue.
 SURFACE, INK, INK_2, GRID, NEUTRAL = "#fcfcfb", "#0b0b0b", "#52514e", "#e4e3df", "#d9d8d3"
+UNINFORMATIVE, FAILED = "#f0efec", "#8a8984"  # pale: no information; mid grey: no value
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
 BLUE_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 
@@ -262,8 +263,9 @@ def _evaluate(config: dict[str, Any], rows: list[dict[str, Any]], key: str) -> d
 
         return [r for r in rs if inside(r)]
 
-    def fail_fraction(rs: list[dict[str, Any]], m: str) -> float:
-        return sum(r[f"{m}_outcome"] in FAILURES for r in rs) / len(rs)
+    def fail_fraction(rs: list[dict[str, Any]], m: str) -> float | None:
+        """Share of a region where the method failed; None for an empty region."""
+        return sum(r[f"{m}_outcome"] in FAILURES for r in rs) / len(rs) if rs else None
 
     a1_fail = region(
         wp, s_max=checks["a1_fail_region"]["s_max"], abs_x_min=checks["a1_fail_region"]["abs_x_min"]
@@ -311,8 +313,8 @@ def _evaluate(config: dict[str, Any], rows: list[dict[str, Any]], key: str) -> d
     }
     lbr = per_method["lets_be_rational"]
     verdicts = {
-        "A1": stats["a1_fail_fraction"] >= checks["a1_fail_region"]["min_fraction"]
-        and stats["a1_calm_fraction"] <= checks["a1_calm_region"]["max_fraction"],
+        "A1": _at_least(stats["a1_fail_fraction"], checks["a1_fail_region"]["min_fraction"])
+        and _at_most(stats["a1_calm_fraction"], checks["a1_calm_region"]["max_fraction"]),
         "A2a": stats["a2_bad_outcomes"] == 0,
         "A2b": per_method["brent"]["iterations_median"] >= checks["a2_min_median_iterations"],
         "A2c": _at_least(stats["a2_small_s_brent_median_enorm"], checks["a2_min_median_enorm"]),
@@ -367,6 +369,21 @@ def _log_with_floor(values: np.ndarray, floor: float) -> np.ma.MaskedArray:
     return np.ma.log10(np.ma.maximum(shown, floor))
 
 
+def _informative_only(
+    rows: list[dict[str, Any]],
+    xs: list[float],
+    ss: list[float],
+    option: str,
+    key: str,
+    floor: float,
+) -> np.ma.MaskedArray:
+    """log10 of a metric for display, masked where no value was returned or the point is not
+    informative; values below `floor` (including exact 0) are shown at the floor."""
+    shown = _log_with_floor(_matrix(rows, xs, ss, option, key), floor)
+    uninformative = _region_mask(rows, xs, ss, option, "informative") == 0.0
+    return np.ma.masked_where(uninformative, shown)
+
+
 def plot_heatmaps(
     config: dict[str, Any],
     rows: list[dict[str, Any]],
@@ -376,21 +393,32 @@ def plot_heatmaps(
     path: Path,
 ) -> None:
     xs, ss = grid_axes(config)
-    cmap = LinearSegmentedColormap.from_list("blue_ramp", BLUE_RAMP).with_extremes(bad=NEUTRAL)
+    cmap = LinearSegmentedColormap.from_list("blue_ramp", BLUE_RAMP).with_extremes(bad=FAILED)
+    pale = ListedColormap([UNINFORMATIVE])
     log_s = np.log10(ss)
     fig, axes = plt.subplots(2, 4, figsize=(16, 7.5), facecolor=SURFACE, sharex=True, sharey=True)
     data = {
-        (o, m): _log_with_floor(_matrix(rows, xs, ss, o, f"{m}_{key}"), floor)
+        (o, m): _informative_only(rows, xs, ss, o, f"{m}_{key}", floor)
         for o in config["option_types"]
         for m in config["methods"]
     }
     high = max(float(v.max()) for v in data.values() if v.count())
-    vmin = math.log10(floor)
     for i, option in enumerate(config["option_types"]):
+        uninformative = _region_mask(rows, xs, ss, option, "informative") == 0.0
         for j, m in enumerate(config["methods"]):
             ax = axes[i, j]
+            values = data[(option, m)]
+            # Failed points inside the informative region show the colormap's "bad" colour.
+            filled = np.ma.masked_where(uninformative, values.filled(np.nan))
             mesh = ax.pcolormesh(
-                xs, log_s, data[(option, m)], cmap=cmap, shading="nearest", vmin=vmin, vmax=high
+                xs, log_s, filled, cmap=cmap, shading="nearest", vmin=math.log10(floor), vmax=high
+            )
+            ax.pcolormesh(
+                xs,
+                log_s,
+                np.ma.masked_where(~uninformative, np.ones_like(values)),
+                cmap=pale,
+                shading="nearest",
             )
             _boundaries(ax, rows, xs, ss, option)
             ax.set_title(f"{LABEL[m]}, {option.lower()}s", color=INK, fontsize=10, loc="left")
@@ -406,10 +434,14 @@ def plot_heatmaps(
         fontsize=9,
     )
     bar.ax.tick_params(colors=INK_2, labelsize=8)
+    handles = [
+        Patch(color=UNINFORMATIVE, label="not informative: c = 0, subnormal, or kappa eps >= 1"),
+        Patch(color=FAILED, label="no value returned"),
+    ]
+    fig.legend(handles=handles, loc="lower left", ncol=2, frameon=False, fontsize=9, labelcolor=INK)
     fig.suptitle(
-        f"{title}. Grey: no value returned. Solid line: SPEC 10 well-posed boundary "
-        "(ill posed where c < eps max(F, K)); dashed: informative region, post hoc "
-        "(normal c and kappa eps < 1).",
+        f"{title}. Solid line: SPEC 10 well-posed boundary (c >= eps max(F, K)); "
+        "dashed: informative region (post hoc).",
         color=INK,
         fontsize=11,
         x=0.01,
@@ -425,11 +457,13 @@ def plot_outcomes(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
     codes = {"CONVERGED": 0, "AT_LOWER_BOUND": 1, "INFEASIBLE": 3}
     cmap = ListedColormap([NEUTRAL, BLUE, ORANGE, AQUA])
     norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5], cmap.N)
+    present: set[int] = set()
     fig, axes = plt.subplots(2, 4, figsize=(16, 7.5), facecolor=SURFACE, sharex=True, sharey=True)
     for i, option in enumerate(config["option_types"]):
         index = {(r["x"], r["s"]): r for r in rows if r["option_type"] == option}
         for j, m in enumerate(config["methods"]):
             grid = np.array([[codes.get(index[(x, s)][f"{m}_outcome"], 2) for x in xs] for s in ss])
+            present |= {int(v) for v in np.unique(grid)}
             ax = axes[i, j]
             ax.pcolormesh(xs, log_s, grid, cmap=cmap, norm=norm, shading="nearest")
             _boundaries(ax, rows, xs, ss, option)
@@ -439,18 +473,24 @@ def plot_outcomes(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
                 ax.set_xlabel("log-moneyness x", color=INK, fontsize=9)
             if j == 0:
                 ax.set_ylabel("log10 total volatility s", color=INK, fontsize=9)
-    handles = [
-        Patch(color=NEUTRAL, label="converged"),
-        Patch(color=BLUE, label="returned s = 0 (lower bound)"),
-        Patch(color=ORANGE, label="failed: no value (diverged, zero derivative, cap)"),
-        Patch(color=AQUA, label="rounded target infeasible"),
-    ]
+    labels = {
+        0: (NEUTRAL, "converged"),
+        1: (BLUE, "returned s = 0 (lower bound)"),
+        2: (ORANGE, "failed: no value (diverged, zero derivative, cap)"),
+        3: (AQUA, "rounded target infeasible"),
+    }
+    handles = [Patch(color=labels[c][0], label=labels[c][1]) for c in sorted(present)]
     fig.legend(
-        handles=handles, loc="lower center", ncol=4, frameon=False, fontsize=9, labelcolor=INK
+        handles=handles,
+        loc="lower center",
+        ncol=len(handles),
+        frameon=False,
+        fontsize=9,
+        labelcolor=INK,
     )
     fig.suptitle(
-        "Solver outcomes over the grid. Solid line: SPEC 10 well-posed boundary; dashed: "
-        "informative region (post hoc).",
+        "Solver outcomes over the grid. Solid line: SPEC 10 well-posed boundary; "
+        "dashed: informative region (post hoc).",
         color=INK,
         fontsize=11,
         x=0.01,
@@ -462,10 +502,11 @@ def plot_outcomes(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
 
 
 def plot_iterations(config: dict[str, Any], rows: list[dict[str, Any]], path: Path) -> None:
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.2), facecolor=SURFACE, sharey=True)
-    wp = [r for r in rows if r["well_posed"]]
+    fig, axes = plt.subplots(1, 3, figsize=(14, 4.4), facecolor=SURFACE, sharey=True)
+    informative_rows = [r for r in rows if r["informative"]]
     for ax, m in zip(axes, ("brent", "naive_newton", "safeguarded_newton"), strict=True):
-        its = _values([r for r in wp if r[f"{m}_outcome"] == "CONVERGED"], f"{m}_iterations")
+        converged = [r for r in informative_rows if r[f"{m}_outcome"] == "CONVERGED"]
+        its = _values(converged, f"{m}_iterations")
         ax.set_facecolor(SURFACE)
         ax.grid(True, axis="y", color=GRID, linewidth=0.8)
         ax.hist(its, bins=np.arange(-0.5, max(its.max(), 2) + 1.5), color=BLUE, rwidth=0.85)
@@ -481,7 +522,7 @@ def plot_iterations(config: dict[str, Any], rows: list[dict[str, Any]], path: Pa
             color=INK,
         )
         ax.set_title(
-            f"{LABEL[m]}: iterations to converge (well-posed points, n = {its.size})",
+            f"{LABEL[m]} (n = {its.size}, median {np.median(its):g})",
             color=INK,
             fontsize=10,
             loc="left",
@@ -490,8 +531,15 @@ def plot_iterations(config: dict[str, Any], rows: list[dict[str, Any]], path: Pa
         ax.tick_params(colors=INK_2, labelsize=8)
         for spine in ax.spines.values():
             spine.set_color(GRID)
-    axes[0].set_ylabel("number of grid points", color=INK, fontsize=9)
-    fig.tight_layout()
+    axes[0].set_ylabel("converged informative points", color=INK, fontsize=9)
+    fig.suptitle(
+        "Iterations to converge, informative region (post hoc)",
+        color=INK,
+        fontsize=11,
+        x=0.01,
+        ha="left",
+    )
+    fig.tight_layout(rect=(0, 0, 1, 0.94))
     fig.savefig(path, dpi=130, facecolor=SURFACE)
     plt.close(fig)
 
@@ -500,30 +548,34 @@ def plot_surfaces(config: dict[str, Any], rows: list[dict[str, Any]], path: Path
     xs, ss = grid_axes(config)
     X, Y = np.meshgrid(xs, np.log10(ss))
     cmap = LinearSegmentedColormap.from_list("blue_ramp", BLUE_RAMP)
-    fig = plt.figure(figsize=(17, 5.2), facecolor=SURFACE)
+    surfaces = {
+        m: _informative_only(rows, xs, ss, "CALL", f"{m}_e_norm", 0.1) for m in config["methods"]
+    }
+    high = max(float(z.max()) for z in surfaces.values() if z.count())
+    fig = plt.figure(figsize=(17, 5.4), facecolor=SURFACE)
     for k, m in enumerate(config["methods"]):
         ax = fig.add_subplot(1, 4, k + 1, projection="3d")
-        Z = _log_with_floor(_matrix(rows, xs, ss, "CALL", f"{m}_e_norm"), 0.1)
         ax.plot_surface(
             X,
             Y,
-            Z.filled(np.nan),
+            surfaces[m].filled(np.nan),
             cmap=cmap,
             linewidth=0,
             antialiased=True,
             vmin=-1.0,
-            vmax=float(Z.max()),
+            vmax=high,
         )
+        ax.set_zlim(-1.0, high)
         ax.set_facecolor(SURFACE)
         ax.set_xlabel("x", color=INK, fontsize=9)
         ax.set_ylabel("log10 s", color=INK, fontsize=9)
         ax.set_zlabel("log10 e_norm", color=INK, fontsize=9)
         ax.set_title(f"{LABEL[m]} (calls)", color=INK, fontsize=10)
-        ax.view_init(elev=30, azim=-55)
+        ax.view_init(elev=30, azim=-60)
         ax.tick_params(colors=INK_2, labelsize=7)
     fig.suptitle(
-        "Normalized error over the (x, s) plane, 3D view of the e_norm heatmaps; gaps: "
-        "no value returned; e_norm below 0.1 shown at 0.1",
+        "Normalized error over the informative region, 3D view of the e_norm heatmaps. "
+        "Gaps: not informative or no value returned; e_norm below 0.1 shown at 0.1.",
         color=INK,
         fontsize=11,
         x=0.01,

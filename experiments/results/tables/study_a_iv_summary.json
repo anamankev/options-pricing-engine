@@ -58,7 +58,7 @@
     }
   },
   "environment": {
-    "commit": "384ab0333c566ccc847aeb34025a761fe16f2239",
+    "commit": "d6241b620f02122fd1cdfb57ef1b8e47ca215278",
     "dirty": false,
     "python": "3.12.15",
     "platform": "macOS-26.6-arm64-arm-64bit",
@@ -70,7 +70,7 @@
       "matplotlib": "3.11.2",
       "lets_be_rational": "1.1.2"
     },
-    "timestamp_utc": "2026-10-30T20:09:00+00:00"
+    "timestamp_utc": "2026-10-30T20:09:55+00:00"
   },
   "registered": {
     "per_method": {
@@ -90,8 +90,8 @@
         "iterations_max": 52.0,
         "time_median_us": 0.875,
         "time_iqr_us": [
-          0.834,
-          8.7915
+          0.875,
+          8.792
         ]
       },
       "naive_newton": {
@@ -136,7 +136,7 @@
         "iterations_max": 65.0,
         "time_median_us": 0.875,
         "time_iqr_us": [
-          0.8335,
+          0.834,
           4.0
         ]
       },
@@ -207,10 +207,10 @@
         "e_ulp_median": 5.0,
         "iterations_median": 12.0,
         "iterations_max": 52.0,
-        "time_median_us": 9.9375,
+        "time_median_us": 10.0,
         "time_iqr_us": [
-          8.375,
-          13.083
+          8.417,
+          13.208
         ]
       },
       "naive_newton": {
@@ -230,10 +230,10 @@
         "e_ulp_median": 6.0,
         "iterations_median": 1.0,
         "iterations_max": 100.0,
-        "time_median_us": 2.416,
+        "time_median_us": 2.3955,
         "time_iqr_us": [
           2.375,
-          3.667
+          3.666375
         ]
       },
       "safeguarded_newton": {
@@ -250,10 +250,10 @@
         "e_ulp_median": 6.0,
         "iterations_median": 9.0,
         "iterations_max": 67.0,
-        "time_median_us": 5.5205,
+        "time_median_us": 5.5,
         "time_iqr_us": [
           3.958,
-          8.917
+          8.906125
         ]
       },
       "lets_be_rational": {
@@ -272,7 +272,7 @@
         "iterations_max": 2.0,
         "time_median_us": 6.625,
         "time_iqr_us": [
-          5.583,
+          5.589125,
           7.375
         ]
       }
@@ -304,7 +304,7 @@
       "A3": true,
       "A4i": true,
       "A4ii": true,
-      "A5": false
+      "A5": true
     }
   }
 }
