@@ -5,6 +5,9 @@ code), not when this file is collected, so the fast CI job, which does not insta
 still collect it. In the full suite a missing QuantLib fails loudly with ImportError.
 """
 
+import dataclasses
+import itertools
+import math
 from pathlib import Path
 
 import mpmath
@@ -17,8 +20,9 @@ from experiments.quantlib_reconciliation import (
     load_config,
 )
 
+from pricing import binomial as bt
 from pricing import black_scholes as bs
-from pricing.contracts import OptionType
+from pricing.contracts import ExerciseStyle, OptionType
 
 pytestmark = pytest.mark.oracle
 
@@ -113,3 +117,132 @@ def test_quantlib_american_engine_is_available() -> None:
     import QuantLib as ql
 
     assert hasattr(ql, "QdFpAmericanEngine")
+
+
+# --- Trees against QuantLib's BinomialVanillaEngine (SPEC 8.1) ----------------------------
+
+# 192 cases: S in {90, 100, 110}, K = 100, 30 or 365 days, (r, q) in {(0.05, 0.02), (-0.01, 0.03)},
+# sigma in {0.2, 0.4}, N in {101, 401}, call and put, European and American.
+TREE_GRID = list(
+    itertools.product(
+        (90.0, 100.0, 110.0),
+        (30, 365),
+        ((0.05, 0.02), (-0.01, 0.03)),
+        (0.2, 0.4),
+        (101, 401),
+        (OptionType.CALL, OptionType.PUT),
+        (ExerciseStyle.EUROPEAN, ExerciseStyle.AMERICAN),
+    )
+)
+# Same algorithm, two implementations. Observed worst relative difference on TREE_GRID: 8.4e-12,
+# the same at N = 101 and N = 401, so it comes from how each library evaluates the step
+# parameters, not from rounding accumulated over steps. 1e-10 leaves 12x margin; any algorithmic
+# difference (probability convention, an off-by-one step) shows up at 1e-9 or more.
+TREE_ORACLE_RTOL = 1e-10
+
+
+def _quantlib_crr_probability(T: float, r: float, q: float, sigma: float, n: int) -> float:
+    # QuantLib's CoxRossRubinstein tree: pu = 1/2 + (1/2) (r - q - sigma^2/2) dt / (sigma sqrt(dt)).
+    return 0.5 + 0.5 * (r - q - 0.5 * sigma**2) * math.sqrt(T / n) / sigma
+
+
+def test_leisen_reimer_matches_quantlib_lr() -> None:
+    from pricing.oracles import quantlib_tree
+
+    failures = []
+    for S, days, (r, q), sigma, n, option_type, exercise in TREE_GRID:
+        market = {"S": S, "K": 100.0, "r": r, "q": q, "sigma": sigma}
+        theirs = quantlib_tree(
+            option_type, **market, days=days, n_steps=n, tree="lr", exercise=exercise
+        )
+        ours = bt.leisen_reimer(option_type, **market, T=days / 365, n_steps=n, exercise=exercise)
+        if abs(ours.value / theirs - 1) > TREE_ORACLE_RTOL:
+            failures.append((S, days, r, q, sigma, n, option_type, exercise, ours.value, theirs))
+    assert not failures, failures[:5]
+
+
+def test_tree_engine_reproduces_quantlib_crr_given_its_probability() -> None:
+    # SPEC 8.1 expected our CRR to match QuantLib's "near machine precision". It does not, because
+    # QuantLib's CRR uses a log-drift approximation for the up-probability where SPEC 4.1 uses the
+    # martingale probability (g - d) / (u - d). Feeding QuantLib's probability into our backward
+    # induction reproduces QuantLib, which isolates the convention as the only difference.
+    from pricing.oracles import quantlib_tree
+
+    failures, smallest_gap = [], math.inf
+    for S, days, (r, q), sigma, n, option_type, exercise in TREE_GRID:
+        market = {"S": S, "K": 100.0, "r": r, "q": q, "sigma": sigma}
+        T = days / 365
+        theirs = quantlib_tree(
+            option_type, **market, days=days, n_steps=n, tree="crr", exercise=exercise
+        )
+        lattice = bt._crr_lattice(option_type, S, 100.0, T, r, q, sigma, n, False)
+        lattice = dataclasses.replace(lattice, p=_quantlib_crr_probability(T, r, q, sigma, n))
+        ours, _ = bt._roll_back(
+            lattice, bt._payoff(lattice, bt._spots(lattice, n)), n, exercise, False
+        )
+        if abs(ours / theirs - 1) > TREE_ORACLE_RTOL:
+            failures.append((S, days, r, q, sigma, n, option_type, exercise, ours, theirs))
+        own_crr = bt.crr(option_type, **market, T=T, n_steps=n, exercise=exercise).value
+        smallest_gap = min(smallest_gap, abs(own_crr / theirs - 1))
+    assert not failures, failures[:5]
+    assert smallest_gap > 10 * TREE_ORACLE_RTOL  # with SPEC's probability the prices do differ
+
+
+# --- American reference for Study B: QdFp (SPEC 8.1, 11, 17) -------------------------------
+
+# Ju and Zhong (1999) cases with the nearest representable maturities: Actual360 with 30, 120 and
+# 210 days gives T = 1/12, 1/3, 7/12 for the printed 0.0833, 0.3333, 0.5833, which moves these
+# prices by at most 1.6e-4 (measured with LR, N = 2001). Tolerance as in SPEC 9.1.
+JUZHONG_ABS_TOL = 2e-3
+QDFP_CASES = [
+    # (type, S, K, r, q, sigma, days, year_days, published)
+    (OptionType.PUT, 40.0, 35.0, 0.0488, 0.0, 0.2, 30, 360, 0.006),
+    (OptionType.PUT, 40.0, 40.0, 0.0488, 0.0, 0.2, 120, 360, 1.580),
+    (OptionType.PUT, 40.0, 40.0, 0.0488, 0.0, 0.2, 210, 360, 1.990),
+    (OptionType.PUT, 40.0, 45.0, 0.0488, 0.0, 0.2, 210, 360, 5.267),
+    (OptionType.PUT, 40.0, 45.0, 0.0488, 0.0, 0.3, 120, 360, 5.706),
+    (OptionType.PUT, 40.0, 40.0, 0.0488, 0.0, 0.4, 210, 360, 4.353),
+    (OptionType.PUT, 40.0, 45.0, 0.0488, 0.0, 0.4, 210, 360, 7.383),
+    (OptionType.PUT, 40.0, 40.0, 0.0488, 0.0, 0.2, 30, 360, 0.852),
+    (OptionType.CALL, 100.0, 100.0, 0.03, 0.07, 0.2, 180, 360, 4.783),
+    (OptionType.CALL, 110.0, 100.0, 0.03, 0.07, 0.2, 180, 360, 11.098),
+    (OptionType.CALL, 100.0, 100.0, 0.03, 0.07, 0.4, 180, 360, 10.239),
+    (OptionType.CALL, 100.0, 100.0, 0.00, 0.07, 0.3, 180, 360, 7.035),
+    (OptionType.CALL, 100.0, 100.0, 0.07, 0.03, 0.3, 180, 360, 9.250),
+    (OptionType.PUT, 80.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 25.658),
+    (OptionType.PUT, 90.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 20.083),
+    (OptionType.PUT, 100.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 15.498),
+    (OptionType.PUT, 110.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 11.803),
+    (OptionType.PUT, 120.0, 100.0, 0.08, 0.12, 0.2, 1095, 365, 8.886),
+]
+# BBSR at N = 16384 against QdFp: observed at most 1.5e-6 on seven of these cases; BBSR's error at
+# that N is O(1e-6) (Phase 2 measurement), so 1e-5 checks agreement with margin.
+QDFP_BBSR_ABS_TOL = 1e-5
+
+
+def test_qdfp_reproduces_ju_zhong() -> None:
+    # SPEC 11: confirm the Study B reference agrees with Ju-Zhong within 2e-3 before using it.
+    from pricing.oracles import quantlib_american
+
+    for option_type, S, K, r, q, sigma, days, year_days, published in QDFP_CASES:
+        value = quantlib_american(
+            option_type, S=S, K=K, r=r, q=q, sigma=sigma, days=days, year_days=year_days
+        )
+        assert value == pytest.approx(published, abs=JUZHONG_ABS_TOL), (S, K, sigma, days)
+
+
+@pytest.mark.slow
+def test_qdfp_agrees_with_bbsr_at_large_n() -> None:
+    from pricing.oracles import quantlib_american
+
+    for option_type, S, K, r, q, sigma, days, year_days, _ in QDFP_CASES[::3]:
+        market = {"S": S, "K": K, "r": r, "q": q, "sigma": sigma}
+        reference = quantlib_american(option_type, **market, days=days, year_days=year_days)
+        tree = bt.bbsr(
+            option_type,
+            **market,
+            T=days / year_days,
+            n_steps=16384,
+            exercise=ExerciseStyle.AMERICAN,
+        )
+        assert tree.value == pytest.approx(reference, abs=QDFP_BBSR_ABS_TOL), (S, K, sigma, days)

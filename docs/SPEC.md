@@ -203,8 +203,8 @@ Round trip price to IV to price over x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 
 - Fixed evaluation date; maturity = evaluation date + n days; `Actual365Fixed`; our T = n / 365 exactly.
 - `FlatForward` curves for r and q with continuous compounding; `BlackConstantVol`; `BlackScholesMertonProcess`.
 - European: `AnalyticEuropeanEngine`. Reconcile prices and all Greeks over a grid of at least 500 cases. Start at relative tolerance 1e-11 (both are double-precision closed forms); justify the final value from the observed error distribution and investigate outliers. Check QuantLib's Greek units before comparing.
-- American: `QdFpAmericanEngine` (Andersen-Lake-Offengenden) high-precision scheme as the Study B oracle. Availability in the Python wheel is unverified: the first oracle test imports it and fails loudly if absent. Fallback: BBSR at N = 2^15 cross-checked with LR at N = 32769, agreement < 1e-6.
-- `BinomialVanillaEngine` ("crr", N) cross-checks our CRR at identical N (expect agreement near machine precision).
+- American: `QdFpAmericanEngine` (Andersen-Lake-Offengenden) high-precision scheme as the Study B oracle. Available in QuantLib 1.44 as `QdFpAmericanEngine(process, QdFpAmericanEngine.highPrecisionScheme())`, for puts and calls (Phase 2): it reproduces Ju-Zhong R4 to R6 within 6.4e-4 and agrees with BBSR at N = 16384 within 1.5e-6 (`tests/test_oracles.py`). Fallback if it ever disappears: BBSR at N = 2^15 cross-checked with LR at N = 32769, agreement < 1e-6.
+- `BinomialVanillaEngine` ("crr", N) cross-checks our CRR at identical N. Phase 2 finding: the expectation of agreement near machine precision is refuted as written. QuantLib's CRR up-probability is the log-drift approximation 1/2 + (1/2)(r - q - sigma^2/2) sqrt(dt) / sigma, not §4.1's martingale probability, so the prices differ by O(1/N) (at least 2e-9 relative on the test grid). With QuantLib's probability substituted, our backward induction reproduces it within 8.1e-12 relative. `BinomialVanillaEngine` ("lr", N) uses §4.2's formulas and matches our LR within 8.4e-12.
 
 ### 8.2 vollib and py_lets_be_rational
 Second implementation for BSM prices and the IV oracle (§6.3). Pin versions. `vollib` is the current name of `py_vollib`: since 1.0.12, `py_vollib` is a shim whose import raises `DeprecationWarning` (Phase 0 finding, 30 October 2026).
@@ -362,7 +362,7 @@ Record exact page or equation numbers in docstrings and notes for every formula 
 ## 17. Open verification items
 - R2, R3 (Haug) and R4b (Ju-Zhong 0.852): reproduced numerically during spec review; confirm printed values in the primary sources if copies are available.
 - Hull edition and page for R1.
-- `QdFpAmericanEngine` scheme API in the QuantLib Python wheel. Availability observed in Phase 0 (30 October 2026): QuantLib 1.44 exposes `QdFpAmericanEngine`, `QdFpLegendreScheme`, `QdFpLegendreTanhSinhScheme`, `QdFpTanhSinhIterationScheme` and `QdFpIterationScheme`. Presence only; no price has been checked.
+- Resolved in Phase 2: `QdFpAmericanEngine` scheme API (`highPrecisionScheme()`), checked against Ju-Zhong and BBSR (see §8.1).
 - `py_lets_be_rational` function signature and price convention in the installed version. Phase 0 found two installed implementations from the same upstream repository with diverged code: `py_lets_be_rational` 1.1.2 and `lets_be_rational` 1.1.2 (a dependency of `vollib`). Choose one for Study A and pin it (Phase 3).
 - Leisen-Reimer formulas (§4.2): numerically consistent with O(1/N^2); confirm equation numbers in the original paper.
 - Jäckel (2015) test cases, if obtainable, as extra Study A anchors.
