@@ -7,6 +7,11 @@ Pre-registered in docs/notes/phase_1_quantlib_reconciliation.md. Run from the re
 
 Writes one CSV row per case and a JSON summary that records the config, commit hash, library
 versions and platform. Deterministic: no random numbers are used.
+
+Post-hoc diagnosis, added after the first run and not pre-registered: wherever the two
+implementations differ by more than the relative tolerance, both are scored against the exact
+value from mpmath at 50 significant digits, and each difference is also expressed in units of
+eps times the quantity's natural scale.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from importlib.metadata import version
 from pathlib import Path
 from typing import Any
 
+import mpmath
 import numpy as np
 
 from pricing import black_scholes as bs
@@ -32,6 +38,9 @@ from pricing.contracts import DAYS_PER_YEAR, OptionType
 
 QUANTITIES = ("price", "delta", "gamma", "vega", "theta", "rho", "phi")
 LIBRARIES = ("numpy", "scipy", "QuantLib", "mpmath")
+EPS = float(np.finfo(np.float64).eps)
+RESULTS_DIR = "experiments/results"
+MP_DIGITS = 50
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -62,6 +71,22 @@ def relative_error(ours: float, reference: float) -> float:
     return abs(ours - reference) / abs(reference)
 
 
+def natural_scale(name: str, case: dict[str, Any]) -> float:
+    """The size each quantity has when it is not small: S for price and theta, 1 for delta,
+    1/S for gamma, S sqrt(T) for vega, K T for rho and S T for phi."""
+    S, K, T = case["S"], case["K"], case["days"] / DAYS_PER_YEAR
+    scales = {
+        "price": S,
+        "delta": 1.0,
+        "gamma": 1.0 / S,
+        "vega": S * math.sqrt(T),
+        "theta": S,
+        "rho": K * T,
+        "phi": S * T,
+    }
+    return scales[name]
+
+
 def compare_case(case: dict[str, Any]) -> dict[str, Any]:
     """Our price and Greeks against QuantLib for one case: values, errors and |d1|."""
     from pricing.oracles import quantlib_european  # needs the oracle extra; imported on use
@@ -82,18 +107,57 @@ def compare_case(case: dict[str, Any]) -> dict[str, Any]:
             f"{name}_ours": ours,
             f"{name}_quantlib": ref,
             f"{name}_abs_err": abs(ours - ref),
+            f"{name}_abs_err_eps_scale": abs(ours - ref) / (EPS * natural_scale(name, case)),
             f"{name}_rel_err": relative_error(ours, ref),
         }
     return row
 
 
+def exact_value(name: str, case: dict[str, Any]) -> mpmath.mpf:
+    """SPEC 3.1 and 3.3 evaluated by mpmath at 50 digits on the exact float inputs."""
+    th = 1 if case["option_type"] == "CALL" else -1
+    with mpmath.workdps(MP_DIGITS):
+        S, K, r, q, sigma = (mpmath.mpf(case[k]) for k in ("S", "K", "r", "q", "sigma"))
+        T = mpmath.mpf(case["days"] / DAYS_PER_YEAR)
+        Sq, Kr = S * mpmath.exp(-q * T), K * mpmath.exp(-r * T)
+        s = sigma * mpmath.sqrt(T)
+        d1 = mpmath.log(Sq / Kr) / s + s / 2
+        d2 = d1 - s
+        N, pdf = mpmath.ncdf, mpmath.npdf
+        values = {
+            "price": th * (Sq * N(th * d1) - Kr * N(th * d2)),
+            "delta": th * mpmath.exp(-q * T) * N(th * d1),
+            "gamma": mpmath.exp(-q * T) * pdf(d1) / (S * s),
+            "vega": Sq * pdf(d1) * mpmath.sqrt(T),
+            "theta": -Sq * pdf(d1) * sigma / (2 * mpmath.sqrt(T))
+            - th * r * Kr * N(th * d2)
+            + th * q * Sq * N(th * d1),
+            "rho": th * T * Kr * N(th * d2),
+            "phi": -th * T * Sq * N(th * d1),
+        }
+        return values[name]
+
+
+def _rel_to_exact(value: float, exact: mpmath.mpf) -> float:
+    with mpmath.workdps(MP_DIGITS):
+        return float(abs(mpmath.mpf(value) - exact) / abs(exact))
+
+
 def summarize(rows: list[dict[str, Any]], rtol: float, small_d1: float) -> dict[str, Any]:
-    """Per quantity: max, p99 and median relative error, exceedances, and the worst case."""
+    """Per quantity: error distribution, exceedances, the worst case, and (post hoc) both
+    implementations scored against mpmath wherever they differ by more than rtol."""
     summary: dict[str, Any] = {}
     for name in QUANTITIES:
         rel = np.array([row[f"{name}_rel_err"] for row in rows])
         worst = rows[int(np.argmax(rel))]
         over = [row for row in rows if row[f"{name}_rel_err"] > rtol]
+        vs_exact = [
+            (
+                _rel_to_exact(row[f"{name}_ours"], exact_value(name, row)),
+                _rel_to_exact(row[f"{name}_quantlib"], exact_value(name, row)),
+            )
+            for row in over
+        ]
         summary[name] = {
             "max_rel_err": _json_float(float(rel.max())),
             "p99_rel_err": _json_float(float(np.percentile(rel, 99))),
@@ -101,6 +165,12 @@ def summarize(rows: list[dict[str, Any]], rtol: float, small_d1: float) -> dict[
             "max_abs_err": max(row[f"{name}_abs_err"] for row in rows),
             "count_over_rtol": len(over),
             "count_over_rtol_with_small_d1": sum(row["abs_d1"] < small_d1 for row in over),
+            "min_abs_d1_over_rtol": min((row["abs_d1"] for row in over), default=None),
+            "max_abs_err_eps_scale_over_rtol": max(
+                (row[f"{name}_abs_err_eps_scale"] for row in over), default=0.0
+            ),
+            "over_rtol_ours_max_rel_vs_exact": max((o for o, _ in vs_exact), default=0.0),
+            "over_rtol_quantlib_max_rel_vs_exact": max((ql for _, ql in vs_exact), default=0.0),
             "worst_case": {k: worst[k] for k in ("option_type", "S", "days", "r", "q", "sigma")}
             | {
                 "abs_d1": worst["abs_d1"],
@@ -120,9 +190,11 @@ def _git(*args: str) -> str:
 
 
 def environment() -> dict[str, Any]:
+    """Provenance, captured before any output is written. `dirty` ignores the results folder,
+    which this script itself writes to."""
     return {
         "commit": _git("rev-parse", "HEAD"),
-        "dirty": bool(_git("status", "--porcelain")),
+        "dirty": bool(_git("status", "--porcelain", "--", ".", f":(exclude){RESULTS_DIR}")),
         "python": platform.python_version(),
         "platform": platform.platform(),
         "machine": platform.machine(),
@@ -136,6 +208,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args(argv)
     config = load_config(args.config)
+    env = environment()
 
     rows = [compare_case(case) for case in iter_cases(config)]
     summary = summarize(rows, config["relative_tolerance"], config["small_d1"])
@@ -146,22 +219,29 @@ def main(argv: list[str] | None = None) -> int:
         writer = csv.DictWriter(f, fieldnames=list(rows[0]))
         writer.writeheader()
         writer.writerows(rows)
-    record = {
-        "config": config,
-        "environment": environment(),
-        "n_cases": len(rows),
-        "summary": summary,
-    }
+    record = {"config": config, "environment": env, "n_cases": len(rows), "summary": summary}
     Path(config["output"]["summary_json"]).write_text(json.dumps(record, indent=2) + "\n")
 
-    print(f"{len(rows)} cases; relative tolerance {config['relative_tolerance']:g}")
-    print(f"{'quantity':8s} {'max rel':>10s} {'p99 rel':>10s} {'median':>10s} {'> rtol':>7s}")
+    print(f"{len(rows)} cases; relative tolerance {config['relative_tolerance']:g}; ", end="")
+    print(f"commit {env['commit'][:7]}{' (dirty)' if env['dirty'] else ''}")
+    header = ("quantity", "max rel", "p99 rel", "median", ">rtol", "min|d1|", "eps*scl")
+    print("{:8s} {:>9s} {:>9s} {:>9s} {:>6s} {:>8s} {:>8s}".format(*header), end="")
+    print(" | vs mpmath: ours, QuantLib")
     for name, s in summary.items():
+        min_d1 = s["min_abs_d1_over_rtol"]
         print(
-            f"{name:8s} {s['max_rel_err']:>10.2e} {s['p99_rel_err']:>10.2e} "
-            f"{s['median_rel_err']:>10.2e} {s['count_over_rtol']:>7d}"
+            f"{name:8s} {_fmt(s['max_rel_err'])} {_fmt(s['p99_rel_err'])} "
+            f"{_fmt(s['median_rel_err'])} {s['count_over_rtol']:>6d} "
+            f"{'-' if min_d1 is None else f'{min_d1:.1f}':>8s} "
+            f"{s['max_abs_err_eps_scale_over_rtol']:>8.2f} | "
+            f"{s['over_rtol_ours_max_rel_vs_exact']:.1e}, "
+            f"{s['over_rtol_quantlib_max_rel_vs_exact']:.1e}"
         )
     return 0
+
+
+def _fmt(x: float | str) -> str:
+    return f"{x:>9s}" if isinstance(x, str) else f"{x:>9.1e}"
 
 
 if __name__ == "__main__":
