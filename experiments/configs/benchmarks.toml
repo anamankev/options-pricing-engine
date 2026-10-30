@@ -1,0 +1,38 @@
+# Performance benchmarks (SPEC 12).
+# Design and hypotheses: docs/notes/benchmarks.md (registered at 3e4d134, before this file existed).
+
+warmup = 3  # untimed calls before each measurement
+
+[bsm]
+functions = ["price", "delta"]
+batches = [1, 1000, 1000000]
+repeats = [2000, 300, 15]
+S_range = [50.0, 150.0]
+market = { K = 100.0, T = 1.0, r = 0.03, q = 0.01, sigma = 0.2 }
+
+[trees]  # R4c: American put, S = K = 40, sigma = 0.2, T = 7/12, r = 0.0488
+option_type = "PUT"
+market = { S = 40.0, K = 40.0, T = 0.5833333333333334, r = 0.0488, q = 0.0, sigma = 0.2 }
+n = [50, 100, 200, 400, 800, 1600, 3200]
+repeats_small = 15
+repeats_large = 7
+large_from = 800
+fit_min_n = 400
+
+[monte_carlo]
+market = { S = 100.0, K = 100.0, T = 1.0, r = 0.05, q = 0.02, sigma = 0.2 }
+n = [1000, 10000, 100000, 1000000]
+repeats = [50, 30, 10, 5]
+pilot_divisor = 10
+seed = 20261030
+p3_from_n = 10000
+
+[checks]  # registered in the note, section 2
+p1_band = [1.7, 2.3]
+p2_min_ratio = 100.0
+p3_max_ratio = 2.0
+
+[output]
+table_csv = "experiments/results/tables/benchmarks.csv"
+summary_json = "experiments/results/tables/benchmarks_summary.json"
+figure = "experiments/results/figures/benchmarks.png"
