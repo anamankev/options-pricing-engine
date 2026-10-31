@@ -1,0 +1,101 @@
+{
+  "config": {
+    "bump_study": {
+      "config": "experiments/configs/greek_bumps.toml",
+      "summary": "experiments/results/tables/greek_bumps_summary.json"
+    },
+    "output": {
+      "summary_json": "experiments/results/tables/validation_summary.json"
+    }
+  },
+  "environment": {
+    "commit": "9762d4353330a26d481c114268ed87b94aa3b1e1",
+    "dirty": false,
+    "python": "3.12.15",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "libraries": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "mpmath": "1.4.1"
+    },
+    "timestamp_utc": "2026-10-31T01:09:55+00:00"
+  },
+  "bsm_vs_mpmath": {
+    "cases": 288,
+    "worst_error_eps_scale": 0.7595878789861512
+  },
+  "greeks_vs_finite_differences": {
+    "cases_per_greek": 144,
+    "worst_relative_error": {
+      "delta": 2.98205883926892e-08,
+      "gamma": 1.958181596469872e-08,
+      "vega": 4.983837665979221e-08,
+      "theta": 2.3286331551653937e-09,
+      "rho": 6.224308611186014e-09,
+      "phi": 6.538895107981004e-09
+    },
+    "worst_relative_error_any": 4.983837665979221e-08
+  },
+  "iv_round_trips": {
+    "cases": 520,
+    "safeguarded_newton": {
+      "reasons": {
+        "AT_LOWER_BOUND": 214,
+        "CONVERGED": 306
+      },
+      "worst_error_in_rounding_units": 2.9740017736577826,
+      "value_returned_without_convergence": 0
+    },
+    "brent": {
+      "reasons": {
+        "AT_LOWER_BOUND": 214,
+        "CONVERGED": 306
+      },
+      "worst_error_in_rounding_units": 1.0127017237741816,
+      "value_returned_without_convergence": 0
+    }
+  },
+  "juzhong": {
+    "cases": 18,
+    "lr_steps": 2001,
+    "bbsr_steps": 2048,
+    "lr_worst_abs_difference": 0.0011473458012822846,
+    "bbsr_worst_abs_difference": 0.0006356340575734976,
+    "worst_abs_difference": 0.0011473458012822846
+  },
+  "bump_refined_optimum": {
+    "delta": {
+      "refined_eta": 2.273010720908539e-06,
+      "observed_eta": 3.162277660168379e-06,
+      "observed_over_refined": 1.3912286603313484
+    },
+    "gamma": {
+      "refined_eta": 6.144533883789178e-05,
+      "observed_eta": 3.1622776601683795e-05,
+      "observed_over_refined": 0.5146489090915849
+    },
+    "vega": {
+      "refined_eta": 7.339014550659486e-06,
+      "observed_eta": 1e-05,
+      "observed_over_refined": 1.3625807567177255
+    },
+    "theta": {
+      "refined_eta": 6.197795306475659e-06,
+      "observed_eta": 3.162277660168379e-06,
+      "observed_over_refined": 0.5102262181625018
+    },
+    "rho": {
+      "refined_eta": 4.728888695696336e-06,
+      "observed_eta": 1e-05,
+      "observed_over_refined": 2.1146617405270702
+    },
+    "price": 7.683040827874605,
+    "worst_factor": 2.1146617405270702
+  },
+  "trees_vs_quantlib": {
+    "cases": 192,
+    "lr_worst_relative_difference": 8.432921028145302e-12,
+    "crr_with_quantlib_probability_worst_relative_difference": 8.091860514980453e-12
+  }
+}
