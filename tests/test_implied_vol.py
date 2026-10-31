@@ -109,13 +109,27 @@ def test_price_at_upper_bound_is_infeasible() -> None:
         iv.implied_volatility(CALL, upper, **ITM)
 
 
-def test_in_the_money_time_value_below_rounding_is_at_lower_bound() -> None:
-    intrinsic = float(bs.price(CALL, **ITM, sigma=0.0))
-    res = iv.implied_volatility_result(CALL, intrinsic + 1e-15, **ITM)
-    assert res.reason is IVReason.AT_LOWER_BOUND
-    assert res.converged
-    assert res.sigma == 0.0
-    assert res.iterations == 0
+def test_in_the_money_price_at_or_just_below_intrinsic_is_at_lower_bound() -> None:
+    # SPEC 6.2: c at iota, or below it by no more than the rounding tolerance, gives s = 0.
+    F, K = 100.0, 90.0
+    for c in (F - K, (F - K) * (1 - 4 * EPS)):
+        res = iv.solve_black(CALL, c, F=F, K=K, T=1.0)
+        assert res.reason is IVReason.AT_LOWER_BOUND
+        assert res.converged
+        assert res.sigma == 0.0
+        assert res.iterations == 0
+
+
+def test_in_the_money_tiny_positive_time_value_is_solved() -> None:
+    # Study A2 follow-up (SPEC 6.2): any positive time value is solved, and the answer reproduces
+    # the price's time value to the solver's stopping rule (4 eps relative residual).
+    F, K = 100.0, 90.0
+    c = (F - K) + 1e-13  # time value ~ 0.45 eps max(F, K), below one ulp of c
+    res = iv.solve_black(CALL, c, F=F, K=K, T=1.0)
+    assert res.reason is IVReason.CONVERGED
+    assert res.total_vol is not None
+    put = iv.solve_black(PUT, c - (F - K), F=F, K=K, T=1.0)  # the same problem, out of the money
+    assert put.total_vol == res.total_vol
 
 
 def test_out_of_the_money_zero_price_is_at_lower_bound() -> None:
@@ -222,7 +236,7 @@ def test_near_the_money_small_vol_round_trip_is_accurate(method: IVMethod) -> No
 
 
 def test_in_the_money_price_with_informative_time_value_is_solved() -> None:
-    # Deep in the money, small vol: the time value is a few eps max(F, K), below the old 8-eps
+    # Deep in the money, small vol: the time value is a few eps max(F, K), below Study A's 8-eps
     # lower-bound rule, yet the price still pins sigma because the time value is so sensitive to s
     # (elasticity d ln c_otm / d ln s ~ x^2 / s^2). Study A found 30 such prices returned as s = 0.
     F, K, T, s = 100.0, 100.0 * math.exp(-0.5), 1.0, 0.0685  # put ~ 1e-13 ~ 4.5 eps F

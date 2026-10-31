@@ -12,9 +12,12 @@ The solvers work in s and return sigma = s / sqrt(T).
 Feasibility (SPEC 6.2, as amended in Phase 3 and Study A2). With tol = 8 eps max(F, K):
 - c below the intrinsic value (by more than tol when iota > 0): InfeasiblePriceError.
 - c >= upper - tol: InfeasiblePriceError (s would be infinite).
-- In the money, a time value c - iota of at most 2 eps max(F, K) is rounding: s = 0, reason
-  AT_LOWER_BOUND. Out of the money iota is exactly 0, so only c = 0 is at the lower bound: a deep
-  out-of-the-money price such as 1e-20 has a well-conditioned implied volatility.
+- c at or below iota (within tol): s = 0, reason AT_LOWER_BOUND. Any positive time value
+  c - iota is solved (Study A2 follow-up): even a time value below one ulp of c can pin s, because
+  deep in the money it is extremely sensitive to s; how accurately is set by the problem's
+  conditioning, not by the price's rounding. A 2 eps max(F, K) cutoff still dropped 20 such
+  prices that Let's Be Rational solved to within 4% (Study A2, H2). Out of the money iota is
+  exactly 0, so a deep out-of-the-money price such as 1e-20 is solved too.
 
 In the money, the solvers work on the out-of-the-money counterpart (Study A2): by put-call parity
 the in-the-money price minus iota is exactly the other option's price, with the same volatility.
@@ -66,12 +69,6 @@ from pricing.errors import ConvergenceError, InfeasiblePriceError, PricingInputE
 
 EPS = sys.float_info.epsilon
 BOUND_TOL_FACTOR = 8.0  # SPEC 6.2: tol = 8 eps max(F, K), for infeasibility
-# SPEC 6.2 (Study A2 amendment). In the money, the time value c - iota of a correctly rounded
-# price is uncertain by about eps max(F, K): half an ulp from rounding c itself and half from the
-# parity subtraction. A time value at most twice that is rounding, so s = 0 (AT_LOWER_BOUND).
-# Above it the price carries information: Study A found 30 such prices discarded by the old
-# 8 eps max(F, K) rule, 16 of them solved by Let's Be Rational to within 0.4%.
-TIME_VALUE_TOL_FACTOR = 2.0
 # c(s) = theta (a - b) with a = F N(theta d1), b = K N(theta d2) (SPEC 6.1). When max(a, b) is
 # more than this many times c, the subtraction has lost log10(max(a, b) / c) digits; c is then
 # recomputed with mpmath with that many extra digits (plus a guard) on the exact inputs. A factor
@@ -225,7 +222,7 @@ def solve_black(
         )
     if lower > 0.0:  # in the money: solve the out-of-the-money counterpart (put-call parity)
         time_value = c - lower
-        if time_value <= TIME_VALUE_TOL_FACTOR * EPS * max(F, K):
+        if time_value <= 0.0:
             return _at_lower_bound(method, lower - c, record_path)
         theta, c, lower = -theta, time_value, 0.0
     if c == 0.0:  # out of the money (possibly after the parity step): c(0) = 0

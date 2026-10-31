@@ -8,15 +8,15 @@
 
 [[claim]]
 id = "status.tests"
-readme = "455 tests: deterministic, statistical, and oracle tests"
-shown = "455"
+readme = "458 tests: deterministic, statistical, and oracle tests"
+shown = "458"
 source = "count:tests"
 format = "d"
 
 [[claim]]
 id = "status.experiments"
-readme = "8 experiments, each reproducible from one command"
-shown = "8"
+readme = "9 experiments, each reproducible from one command"
+shown = "9"
 source = "count:glob:experiments/configs/*.toml"
 format = "d"
 

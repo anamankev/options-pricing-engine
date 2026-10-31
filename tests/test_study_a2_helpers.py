@@ -56,3 +56,33 @@ def test_verdicts_apply_the_registered_thresholds() -> None:
     result = verdicts(CONFIG, {"grid_a": bad, "new_grid": good})
     assert not result["H1"]  # 683 > 4 on grid A
     assert not result["H3"]
+
+
+FOLLOWUP = load_config(
+    Path(__file__).resolve().parents[1] / "experiments/configs/study_a2_followup.toml"
+)
+
+
+def _points(config: dict[str, Any], name: str) -> set[tuple[float, float]]:
+    grid = next(g for g in config["grids"] if g["name"] == name)
+    xs, ss = grid_axes(grid_config(config, grid))
+    return {(round(x, 12), round(s, 15)) for x in xs for s in ss}
+
+
+def test_confirmation_grid_shares_no_point_with_earlier_grids() -> None:
+    confirm = _points(FOLLOWUP, "confirm_grid")
+    assert len(confirm) == 35 * 53  # registered: 35 x 53 points per option type
+    assert not confirm & _points(CONFIG, "grid_a")
+    assert not confirm & _points(CONFIG, "new_grid")
+
+
+def test_followup_hypotheses_are_judged_on_the_confirmation_grid_only() -> None:
+    good = evaluate(FOLLOWUP, [_row(0.0, 1e-3, True, "CONVERGED", "CONVERGED", 1.0)])
+    missed = evaluate(FOLLOWUP, [_row(3.0, 0.5, True, "AT_LOWER_BOUND", "CONVERGED", 0.0)])
+    by_grid = {
+        "grid_a": verdicts(FOLLOWUP, {"grid_a": missed}),  # post hoc: does not count
+        "confirm_grid": verdicts(FOLLOWUP, {"confirm_grid": good}),
+    }
+    assert by_grid["confirm_grid"]["H2"]
+    assert "H5" in by_grid["confirm_grid"]  # the fresh grid
+    assert "H5" not in by_grid["grid_a"]

@@ -96,27 +96,35 @@ def evaluate(config: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+def _within(value: float | None, limit: float) -> bool:
+    """A statistic that could not be computed (no converged solves) does not pass."""
+    return value is not None and value <= limit
+
+
 def verdicts(config: dict[str, Any], stats: dict[str, dict[str, Any]]) -> dict[str, bool]:
+    """H1 to H4 and H6 must hold on every grid in `stats`; H5 on the grids never used before
+    (config `fresh_grids`, default the new grid), when any are present."""
     c = config["checks"]
     grids = list(stats.values())
     sn = [g["per_method"][SN] for g in grids]
-    return {
-        "H1": all(
-            g["h1_sn_median_enorm"] is not None
-            and g["h1_sn_median_enorm"] <= c["h1_max_median_enorm"]
-            for g in grids
-        ),
+    fresh = [stats[name] for name in config.get("fresh_grids", ["new_grid"]) if name in stats]
+    result = {
+        "H1": all(_within(g["h1_sn_median_enorm"], c["h1_max_median_enorm"]) for g in grids),
         "H2": all(not g["h2_sn_missed"] for g in grids),
         "H3": all(
-            s["e_norm_median"] <= c["h3_max_median_enorm"]
-            and s["e_norm_p99"] <= c["h3_max_p99_enorm"]
+            _within(s["e_norm_median"], c["h3_max_median_enorm"])
+            and _within(s["e_norm_p99"], c["h3_max_p99_enorm"])
             for s in sn
         ),
         "H4": all(sum(g["h4_bad"].values()) == 0 for g in grids),
-        "H5": stats["new_grid"]["per_method"]["lets_be_rational"]["e_norm_p99"]
-        <= c["h5_max_p99_enorm_lbr"],
-        "H6": all(s["iterations_median"] <= c["h6_max_median_iterations"] for s in sn),
+        "H6": all(_within(s["iterations_median"], c["h6_max_median_iterations"]) for s in sn),
     }
+    if fresh:
+        result["H5"] = all(
+            _within(g["per_method"]["lets_be_rational"]["e_norm_p99"], c["h5_max_p99_enorm_lbr"])
+            for g in fresh
+        )
+    return dict(sorted(result.items()))
 
 
 def before(config: dict[str, Any]) -> dict[str, Any]:
@@ -138,6 +146,7 @@ def main(argv: list[str] | None = None) -> int:
     env = environment(LIBRARIES)
     out = config["output"]
     figures = Path(out["figure_dir"])
+    prefix = out.get("figure_prefix", "study_a2")
     figures.mkdir(parents=True, exist_ok=True)
 
     stats: dict[str, dict[str, Any]] = {}
@@ -157,28 +166,39 @@ def main(argv: list[str] | None = None) -> int:
             "e_norm",
             0.1,
             f"Study A2 ({grid['name']}): e_norm = e_rel / (max(kappa, 1) eps)",
-            figures / f"study_a2_{grid['name']}_e_norm.png",
+            figures / f"{prefix}_{grid['name']}_e_norm.png",
         )
-        plot_surfaces(gconfig, rows, figures / f"study_a2_{grid['name']}_e_norm_3d.png")
+        plot_surfaces(gconfig, rows, figures / f"{prefix}_{grid['name']}_e_norm_3d.png")
 
-    record = {
+    record: dict[str, Any] = {
         "config": config,
         "environment": env,
         "grids": stats,
-        "before_grid_a": before(config),
         "verdicts": verdicts(config, stats),
+        "verdicts_by_grid": {name: verdicts(config, {name: s}) for name, s in stats.items()},
     }
+    if "before_table" in config:
+        record["before_grid_a"] = before(config)
+    if "followup" in config:  # registered hypotheses judged on one grid (note, section 9)
+        f = config["followup"]
+        judged = record["verdicts_by_grid"][f["grid"]]
+        record["followup_verdicts"] = {name: judged[h] for name, h in f["hypotheses"].items()}
     Path(out["summary_json"]).write_text(json.dumps(record, indent=2, default=str) + "\n")
 
     print(f"commit {env['commit'][:7]}{' (dirty)' if env['dirty'] else ''}")
-    for name, s in [*stats.items(), ("before (Study A, grid A)", record["before_grid_a"])]:
+    shown = [*stats.items()]
+    if "before_grid_a" in record:
+        shown.append(("before (Study A, grid A)", record["before_grid_a"]))
+    for name, s in shown:
         sn = s["per_method"][SN]
         print(f"=== {name}: {s['n_informative']} informative of {s['n_points']}")
         print(f"  H1 near money SN median e_norm {s['h1_sn_median_enorm']} (n={s['h1_n']})")
         print(f"  H2 LBR converged {s['h2_lbr_converged']}, SN missed {len(s['h2_sn_missed'])}")
         print(f"  H3 SN e_norm median {sn['e_norm_median']}, p99 {sn['e_norm_p99']}")
         print(f"  H4 bad outcomes {s['h4_bad']}; H6 SN iterations median {sn['iterations_median']}")
-    for name, ok in record["verdicts"].items():
+    for label, table in (("all grids", record["verdicts"]), *record["verdicts_by_grid"].items()):
+        print(label, {k: "SUPPORTED" if ok else "REFUTED" for k, ok in table.items()})
+    for name, ok in record.get("followup_verdicts", {}).items():
         print(f"{name}: {'SUPPORTED' if ok else 'REFUTED'}")
     return 0
 

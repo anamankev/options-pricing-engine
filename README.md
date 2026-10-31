@@ -15,9 +15,9 @@ The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). E
 ## Status
 
 All seven phases of SPEC §14 are complete.
-- 455 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 458 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
-- 8 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
+- 9 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 - Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.
 
 ## Results
@@ -202,6 +202,7 @@ Each experiment is one command that writes its tables and figures to `experiment
 | Study A | `python -m experiments.study_a_iv --config experiments/configs/study_a_iv.toml` | yes |
 | Study B | `python -m experiments.study_b_trees --config experiments/configs/study_b_trees.toml` | yes |
 | Study A2 (the solver fixes, on Study A's grid and a new one) | `python -m experiments.study_a2_iv --config experiments/configs/study_a2_iv.toml` | yes |
+| Study A2 follow-up (time-value cutoff 0, confirmed on a third grid) | `python -m experiments.study_a2_iv --config experiments/configs/study_a2_followup.toml` | yes |
 | Benchmarks | `python -m experiments.benchmarks --config experiments/configs/benchmarks.toml` | no |
 | Validation numbers (this README's Validation section) | `python -m experiments.validation --config experiments/configs/validation.toml` | for the tree comparison |
 
