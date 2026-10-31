@@ -1,6 +1,6 @@
 # Study A2: do the solver fixes close Study A's gaps?
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `030cea7`, after the fixes they test (`0a1566d`) and before the study code existed. Results from commit `ba1d3c6`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `030cea7`, after the fixes they test (`0a1566d`) and before the study code existed; results from commit `ba1d3c6`. Follow-up (section 9) registered at `61420eb`; results from `28544ae` (section 10).
 
 ## 1. Question
 Study A found two weaknesses in our safeguarded Newton solver:
@@ -105,3 +105,36 @@ Section 6 concluded, after seeing H2 fail, that the in-the-money cutoff should b
 - Grids A and new are rerun with the change too. Those numbers are post hoc, since the change was designed from them, and are reported as such.
 - Same code path, solvers, truth and metrics as sections 1 to 3. Script `experiments/study_a2_iv.py` (extended to evaluate each grid separately); config `experiments/configs/study_a2_followup.toml`.
 - Also reported, not tested: what SN now returns at uninformative in-the-money points that previously gave s = 0.
+
+## 10. Follow-up results
+- Code: commit `28544ae`, clean tree. Command: `python -m experiments.study_a2_iv --config experiments/configs/study_a2_followup.toml` (about 1.5 minutes).
+- Environment: as section 4.
+- Outputs:
+  - tables: `experiments/results/tables/study_a2_followup_{grid_a,new_grid,confirm_grid}.csv` and `study_a2_followup_summary.json`;
+  - figures: `experiments/results/figures/study_a2_followup_*`.
+
+| Statistic (informative points) | Confirmation grid (registered) | Grid A (post hoc) | New grid (post hoc) |
+|---|---|---|---|
+| Informative points | 1246 of 3710 | 1954 of 5880 | 1807 of 5472 |
+| F1: points LBR solves that SN does not | 0 of 1238 | 0 of 1940 | 0 of 1797 |
+| F2: SN e_norm median / p99 | 0.0 / 2.20 | 0.018 / 2.63 | 0.0 / 2.13 |
+| F3: SN median e_norm near the money | 0.0 (n = 44) | 0.0 (n = 56) | 0.0 (n = 12) |
+| F4: bad outcomes (Brent, SN) | 0, 0 | 0, 0 | 0, 0 |
+| SN median iterations | 9 | 8 | 9 |
+| SN median time per solve (reported, not tested) | 340 us | 244 us | 302 us |
+
+At uninformative points priced above the intrinsic value, which previously gave s = 0, SN now converges at all of them:
+- confirmation grid: 5 of 5, median relative error 9.6%;
+- grid A: 8 of 8, 0.8%;
+- new grid: 7 of 7, 1.7%.
+
+LBR also converges at 19 of these 20 points.
+
+### Follow-up verdicts
+- F1: SUPPORTED. SN converges at every informative point where LBR does.
+- F2: SUPPORTED. Median 0.0, p99 2.20, within the thresholds LBR met in Study A.
+- F3: SUPPORTED.
+- F4: SUPPORTED.
+
+### Conclusion
+With the follow-up, our safeguarded Newton matches Let's Be Rational: it solves the same prices, with p99 normalized error 2.1 to 2.6 against LBR's 2.0 to 2.7. It is still about 35 to 50 times slower per solve, the cost of the extra-digit evaluation (section 6). The README's two implied-volatility limitations from Study A are resolved; the speed cost replaces them.
