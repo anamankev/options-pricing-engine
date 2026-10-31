@@ -1,0 +1,518 @@
+# Claims ledger: every number README.md states, and the file it comes from.
+#
+# Checked by tests/test_claims.py and by `python -m verify`. If a result changes, or a README
+# number is edited by hand, the check fails and names the claim. Field meanings and the source
+# grammar are documented in verify/ledger.py.
+
+# --- Status -------------------------------------------------------------------------------------
+
+[[claim]]
+id = "status.tests"
+readme = "426 tests: deterministic, statistical, and oracle tests"
+shown = "426"
+source = "count:tests"
+format = "d"
+
+[[claim]]
+id = "status.experiments"
+readme = "7 experiments, each reproducible from one command"
+shown = "7"
+source = "count:glob:experiments/configs/*.toml"
+format = "d"
+
+# --- Study A ------------------------------------------------------------------------------------
+
+[[claim]]
+id = "study_a.problems"
+readme = "5880 problems across log-moneyness and total volatility"
+shown = "5880"
+source = "json:experiments/results/tables/study_a_iv_summary.json#registered.stats.n_points"
+format = "d"
+
+[[claim]]
+id = "study_a.digits"
+readme = "with targets computed at 50 digits"
+shown = "50"
+source = "toml:experiments/configs/study_a_iv.toml#mp_digits"
+format = "d"
+
+[[claim]]
+id = "study_a.lbr_median_ulp"
+readme = "median error 1 ulp"
+shown = "1"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.per_method.lets_be_rational.e_ulp_median"
+format = ".0f"
+
+[[claim]]
+id = "study_a.lbr_p99"
+readme = "99th-percentile normalized error 1.99"
+shown = "1.99"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.per_method.lets_be_rational.e_norm_p99"
+format = ".2f"
+
+[[claim]]
+id = "study_a.lbr_iterations"
+readme = "in 2 iterations"
+shown = "2"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.per_method.lets_be_rational.iterations_median"
+format = ".0f"
+
+[[claim]]
+id = "study_a.newton_iterations"
+readme = "(median 9 against 12)"
+shown = "9"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.per_method.safeguarded_newton.iterations_median"
+format = ".0f"
+
+[[claim]]
+id = "study_a.brent_iterations"
+readme = "(median 9 against 12)"
+shown = "12"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.per_method.brent.iterations_median"
+format = ".0f"
+
+[[claim]]
+id = "study_a.newton_near_money"
+readme = "(median normalized error 683)"
+shown = "683"
+source = "json:experiments/results/tables/study_a_iv_summary.json#post_hoc_informative.stats.a5_newton_median_enorm"
+format = ".0f"
+
+# --- Study B ------------------------------------------------------------------------------------
+
+[[claim]]
+id = "study_b.juzhong_cases"
+readme = "the 18 Ju and Zhong (1999) American cases"
+shown = "18"
+source = "json:experiments/results/tables/study_b_summary.json#juzhong"
+aggregate = "len"
+format = "d"
+
+[[claim]]
+id = "study_b.richardson_share"
+readme = "helps only 32% of the time"
+shown = "32"
+source = "json:experiments/results/tables/study_b_summary.json#stats.B1.richardson_improves_share"
+scale = 100.0
+format = ".0f"
+
+[[claim]]
+id = "study_b.lr_european_slope"
+readme = "(slope -1.995)"
+shown = "-1.995"
+source = "json:experiments/results/tables/study_b_summary.json#stats.B2_lr_european_slope"
+format = ".3f"
+
+[[claim]]
+id = "study_b.lr_put_median"
+readme = "first order for American puts (median -1.00)"
+shown = "-1.00"
+source = "json:experiments/results/tables/study_b_summary.json#stats.B3_median_slope"
+format = ".2f"
+
+[[claim]]
+id = "study_b.bbsr_share"
+readme = "in 85% of comparisons on American puts"
+shown = "85"
+source = "json:experiments/results/tables/study_b_summary.json#stats.B4_bbsr_share"
+scale = 100.0
+format = ".0f"
+
+[[claim]]
+id = "study_b.bbsr_put_median_order"
+readme = "(median order -1.24)"
+shown = "-1.24"
+source = "csv:experiments/results/tables/study_b_orders.csv[method=bbsr,case=R4a|R4b|R4c|R4d|R4e|R4f|R4g|R4h|R6a|R6b|R6c|R6d|R6e].slope"
+aggregate = "median"
+format = ".2f"
+
+# --- Validation ---------------------------------------------------------------------------------
+
+[[claim]]
+id = "validation.mpmath_cases"
+readme = "a 50-digit mpmath evaluation on 288 cases"
+shown = "288"
+source = "json:experiments/results/tables/validation_summary.json#bsm_vs_mpmath.cases"
+format = "d"
+
+[[claim]]
+id = "validation.mpmath_digits"
+readme = "a 50-digit mpmath evaluation"
+shown = "50"
+source = "py:experiments.mp_reference:DIGITS"
+format = "d"
+
+[[claim]]
+id = "validation.mpmath_worst"
+readme = "The worst error is 0.76 eps times the formula's error scale"
+shown = "0.76"
+source = "json:experiments/results/tables/validation_summary.json#bsm_vs_mpmath.worst_error_eps_scale"
+format = ".2f"
+
+[[claim]]
+id = "validation.mpmath_budget"
+readme = "against a budget of 64"
+shown = "64"
+source = "py:tests.test_black_scholes:ROUNDING_FACTOR"
+format = "d"
+
+[[claim]]
+id = "validation.greeks_fd"
+readme = "all six agree with finite differences to 5e-8 relative or better"
+shown = "5e-8"
+source = "json:experiments/results/tables/validation_summary.json#greeks_vs_finite_differences.worst_relative_error_any"
+format = ".0e"
+
+[[claim]]
+id = "validation.quantlib_version"
+readme = "QuantLib 1.44, 1800 European cases"
+shown = "1.44"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#environment.libraries.QuantLib"
+format = "s"
+
+[[claim]]
+id = "validation.quantlib_cases"
+readme = "QuantLib 1.44, 1800 European cases"
+shown = "1800"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#n_cases"
+format = "d"
+
+[[claim]]
+id = "validation.quantlib_median_low"
+readme = "median relative agreement 2e-16 to 1e-15"
+shown = "2e-16"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#summary.*.median_rel_err"
+aggregate = "min"
+format = ".0e"
+
+[[claim]]
+id = "validation.quantlib_median_high"
+readme = "median relative agreement 2e-16 to 1e-15"
+shown = "1e-15"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#summary.*.median_rel_err"
+aggregate = "max"
+format = ".0e"
+
+[[claim]]
+id = "validation.quantlib_tail_d1"
+readme = "In far tails (|d1| >= 3.2)"
+shown = "3.2"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#summary.*.min_abs_d1_over_rtol"
+aggregate = "min"
+format = ".1f"
+
+[[claim]]
+id = "validation.quantlib_tail_loss"
+readme = "up to 100% against the exact value"
+shown = "100"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#summary.*.over_rtol_quantlib_max_rel_vs_exact"
+aggregate = "max"
+scale = 100.0
+format = ".0f"
+
+[[claim]]
+id = "validation.ours_tail_worst"
+readme = "this library's worst relative error is 2.5e-10"
+shown = "2.5e-10"
+source = "json:experiments/results/tables/quantlib_reconciliation_summary.json#summary.*.over_rtol_ours_max_rel_vs_exact"
+aggregate = "max"
+format = ".1e"
+
+[[claim]]
+id = "validation.juzhong_cases"
+readme = "all 18 Ju-Zhong values are reproduced"
+shown = "18"
+source = "json:experiments/results/tables/validation_summary.json#juzhong.cases"
+format = "d"
+
+[[claim]]
+id = "validation.juzhong_tolerance"
+readme = "reproduced within 2e-3 by Leisen-Reimer and by BBSR"
+shown = "2e-3"
+source = "json:experiments/results/tables/validation_summary.json#juzhong.worst_abs_difference"
+kind = "at_most"
+format = ".1e"
+
+[[claim]]
+id = "validation.juzhong_worst"
+readme = "(worst difference 1.1e-3)"
+shown = "1.1e-3"
+source = "json:experiments/results/tables/validation_summary.json#juzhong.worst_abs_difference"
+format = ".1e"
+
+[[claim]]
+id = "validation.lr_vs_quantlib"
+readme = "Leisen-Reimer matches QuantLib's tree to 8.4e-12"
+shown = "8.4e-12"
+source = "json:experiments/results/tables/validation_summary.json#trees_vs_quantlib.lr_worst_relative_difference"
+format = ".1e"
+
+[[claim]]
+id = "validation.crr_with_quantlib_probability"
+readme = "ours matches to 8.1e-12"
+shown = "8.1e-12"
+source = "json:experiments/results/tables/validation_summary.json#trees_vs_quantlib.crr_with_quantlib_probability_worst_relative_difference"
+format = ".1e"
+
+[[claim]]
+id = "validation.iv_cases"
+readme = "(SPEC §6.4 grid, 520 cases)"
+shown = "520"
+source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.cases"
+format = "d"
+
+[[claim]]
+id = "validation.iv_newton_worst"
+readme = "errors at most 3.0 (safeguarded Newton)"
+shown = "3.0"
+source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.safeguarded_newton.worst_error_in_rounding_units"
+format = ".1f"
+
+[[claim]]
+id = "validation.iv_brent_worst"
+readme = "and 1.0 (Brent) times eps x (price rounding / vega)"
+shown = "1.0"
+source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.brent.worst_error_in_rounding_units"
+format = ".1f"
+
+[[claim]]
+id = "validation.iv_never_unconverged_newton"
+readme = "(0 of 520 cases for either solver)"
+shown = "0"
+source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.safeguarded_newton.value_returned_without_convergence"
+format = "d"
+
+[[claim]]
+id = "validation.iv_never_unconverged_brent"
+readme = "(0 of 520 cases for either solver)"
+shown = "0"
+source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.brent.value_returned_without_convergence"
+format = "d"
+
+[[claim]]
+id = "validation.bump_refined_factor"
+readme = "within a factor of 2.1 of the refined prediction"
+shown = "2.1"
+source = "json:experiments/results/tables/validation_summary.json#bump_refined_optimum.worst_factor"
+format = ".1f"
+
+[[claim]]
+id = "validation.mc_replications"
+readme = "(2000 replications per cell)"
+shown = "2000"
+source = "toml:experiments/configs/mc_coverage.toml#replications"
+format = "d"
+
+[[claim]]
+id = "validation.mc_coverage_holds"
+readme = "95% coverage holds for n >= 1000"
+shown = "1000"
+source = "json:experiments/results/tables/mc_coverage_summary.json#checks.C1_coverage_in_band_for_n_ge_1000"
+kind = "true"
+
+[[claim]]
+id = "validation.mc_deep_otm_coverage"
+readme = "drops to 0.83 at n = 100 deep out of the money"
+shown = "0.83"
+source = "json:experiments/results/tables/mc_coverage_summary.json#cells[method=plain,K=140,n_paths=100].coverage"
+format = ".2f"
+
+[[claim]]
+id = "validation.cv_itm"
+readme = "cut the cost of a given accuracy 44-fold in the money"
+shown = "44"
+source = "json:experiments/results/tables/mc_coverage_summary.json#vrf.K=80.control_variate"
+format = ".0f"
+
+[[claim]]
+id = "validation.cv_deep_otm"
+readme = "only 1.2-fold deep out of the money"
+shown = "1.2"
+source = "json:experiments/results/tables/mc_coverage_summary.json#vrf.K=140.control_variate"
+format = ".1f"
+
+# --- Benchmarks ---------------------------------------------------------------------------------
+
+[[claim]]
+id = "benchmarks.bsm_scalar_us"
+readme = "| BSM price, scalar call | 1 option | 23 us |"
+shown = "23"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=bsm,method=price,size=1].median_s"
+scale = 1e6
+format = ".0f"
+
+[[claim]]
+id = "benchmarks.bsm_million_ms"
+readme = "| 1,000,000 options | 21 ms"
+shown = "21"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=bsm,method=price,size=1000000].median_s"
+scale = 1e3
+format = ".0f"
+
+[[claim]]
+id = "benchmarks.bsm_million_per_second"
+readme = "(4.8e7 options per second)"
+shown = "4.8e7"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=bsm,method=price,size=1000000].per_second"
+format = ".1e"
+
+[[claim]]
+id = "benchmarks.tree_fast_low_ms"
+readme = "| American put, CRR or Leisen-Reimer | N ~ 3200 | 30 to 31 ms |"
+shown = "30"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=trees,exercise=american,method=crr|lr,size=3200|3201].median_s"
+aggregate = "min"
+scale = 1e3
+format = ".0f"
+
+[[claim]]
+id = "benchmarks.tree_fast_high_ms"
+readme = "| American put, CRR or Leisen-Reimer | N ~ 3200 | 30 to 31 ms |"
+shown = "31"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=trees,exercise=american,method=crr|lr,size=3200|3201].median_s"
+aggregate = "max"
+scale = 1e3
+format = ".0f"
+
+[[claim]]
+id = "benchmarks.bbsr_ms"
+readme = "| American put, BBSR | N = 3200 | 41 ms |"
+shown = "41"
+source = "json:experiments/results/tables/benchmarks_summary.json#rows[section=trees,exercise=american,method=bbsr,size=3200].median_s"
+scale = 1e3
+format = ".0f"
+
+[[claim]]
+id = "benchmarks.mc_plain_ns"
+readme = "| per path, n = 1e6 | 9.1 / 7.4 / 10.6 ns |"
+shown = "9.1"
+source = "json:experiments/results/tables/benchmarks_summary.json#mc_per_path_at_largest_n.plain"
+scale = 1e9
+format = ".1f"
+
+[[claim]]
+id = "benchmarks.mc_antithetic_ns"
+readme = "| per path, n = 1e6 | 9.1 / 7.4 / 10.6 ns |"
+shown = "7.4"
+source = "json:experiments/results/tables/benchmarks_summary.json#mc_per_path_at_largest_n.antithetic"
+scale = 1e9
+format = ".1f"
+
+[[claim]]
+id = "benchmarks.mc_control_variate_ns"
+readme = "| per path, n = 1e6 | 9.1 / 7.4 / 10.6 ns |"
+shown = "10.6"
+source = "json:experiments/results/tables/benchmarks_summary.json#mc_per_path_at_largest_n.control_variate"
+scale = 1e9
+format = ".1f"
+
+[[claim]]
+id = "benchmarks.tree_exponent_low"
+readme = "Tree runtime grows like N^1.1 to N^1.4 up to N = 3200"
+shown = "1.1"
+source = "json:experiments/results/tables/benchmarks_summary.json#tree_slopes.*"
+aggregate = "min"
+format = ".1f"
+
+[[claim]]
+id = "benchmarks.tree_exponent_high"
+readme = "Tree runtime grows like N^1.1 to N^1.4 up to N = 3200"
+shown = "1.4"
+source = "json:experiments/results/tables/benchmarks_summary.json#tree_slopes.*"
+aggregate = "max"
+format = ".1f"
+
+[[claim]]
+id = "benchmarks.tree_largest_n"
+readme = "Tree runtime grows like N^1.1 to N^1.4 up to N = 3200"
+shown = "3200"
+source = "toml:experiments/configs/benchmarks.toml#trees.n"
+aggregate = "max"
+format = "d"
+
+[[claim]]
+id = "validation.mc_smallest_n"
+readme = "drops to 0.83 at n = 100 deep out of the money"
+shown = "100"
+source = "toml:experiments/configs/mc_coverage.toml#n_paths"
+aggregate = "min"
+format = "d"
+
+[[claim]]
+id = "benchmarks.bsm_scalar_size"
+readme = "| BSM price, scalar call | 1 option | 23 us |"
+shown = "1"
+source = "toml:experiments/configs/benchmarks.toml#bsm.batches"
+aggregate = "min"
+format = "d"
+
+[[claim]]
+id = "benchmarks.bsm_largest_batch"
+readme = "| BSM price, vectorized | 1,000,000 options |"
+shown = "1,000,000"
+source = "toml:experiments/configs/benchmarks.toml#bsm.batches"
+aggregate = "max"
+format = ",d"
+
+[[claim]]
+id = "benchmarks.tree_fast_n"
+readme = "| American put, CRR or Leisen-Reimer | N ~ 3200 | 30 to 31 ms |"
+shown = "3200"
+source = "toml:experiments/configs/benchmarks.toml#trees.n"
+aggregate = "max"
+format = "d"
+
+[[claim]]
+id = "benchmarks.tree_bbsr_n"
+readme = "| American put, BBSR | N = 3200 | 41 ms |"
+shown = "3200"
+source = "toml:experiments/configs/benchmarks.toml#trees.n"
+aggregate = "max"
+format = "d"
+
+[[claim]]
+id = "benchmarks.mc_largest_n"
+readme = "| per path, n = 1e6 | 9.1 / 7.4 / 10.6 ns |"
+shown = "1e6"
+source = "toml:experiments/configs/benchmarks.toml#monte_carlo.n"
+aggregate = "max"
+format = ".0e"
+
+# --- Labels: numbers in the README that are names, not results ----------------------------------
+# Each is allowed only inside its phrase. Anything else numeric in the Status and Results
+# sections must be a claim above (tests/test_claims.py enforces this).
+
+[[label]]
+text = "3.11"
+readme = "CI on Python 3.11 and 3.12."
+reason = "Python versions CI runs (.github/workflows/ci.yml), a setting"
+
+[[label]]
+text = "3.12"
+readme = "CI on Python 3.11 and 3.12."
+reason = "Python versions CI runs (.github/workflows/ci.yml), a setting"
+
+[[label]]
+text = "2015"
+readme = "(Jaeckel 2015)"
+reason = "citation year"
+
+[[label]]
+text = "1999"
+readme = "Ju and Zhong (1999)"
+reason = "citation year"
+
+[[label]]
+text = "99"
+readme = "99th-percentile normalized error"
+reason = "names the statistic"
+
+[[label]]
+text = "95"
+readme = "95% coverage holds"
+reason = "the nominal level of the intervals, a definition"
+
+[[label]]
+text = "3"
+readme = "including 3D error surfaces"
+reason = "names the figure type"

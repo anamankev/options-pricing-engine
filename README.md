@@ -14,10 +14,11 @@ The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). E
 
 ## Status
 
-Version 1.0: all seven phases of SPEC §14 are complete.
-- 352 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+All seven phases of SPEC §14 are complete.
+- 426 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
-- Six experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
+- 7 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
+- Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.
 
 ## Results
 
@@ -36,11 +37,11 @@ R1 (European) and the 18 Ju and Zhong (1999) American cases, against QuantLib's 
 ### Validation
 - **Exact values:** prices agree with a 50-digit mpmath evaluation on 288 cases. The worst error is 0.76 eps times the formula's error scale, against a budget of 64.
 - **Greeks:** all six agree with finite differences to 5e-8 relative or better.
-- **QuantLib 1.44, 1800 European cases:** median relative agreement 2e-16 to 1e-15. In far tails (|d1| >= 3.2) QuantLib loses relative precision, up to 100% against the exact value, while this library stays within 2.5e-10 ([note](docs/notes/phase_1_quantlib_reconciliation.md)).
-- **American benchmarks:** all 18 Ju-Zhong values are reproduced within 2e-3 by Leisen-Reimer and by BBSR.
+- **QuantLib 1.44, 1800 European cases:** median relative agreement 2e-16 to 1e-15. In far tails (|d1| >= 3.2) QuantLib loses relative precision, up to 100% against the exact value, while this library's worst relative error is 2.5e-10 ([note](docs/notes/phase_1_quantlib_reconciliation.md)).
+- **American benchmarks:** all 18 Ju-Zhong values are reproduced within 2e-3 by Leisen-Reimer and by BBSR (worst difference 1.1e-3).
   - Leisen-Reimer matches QuantLib's tree to 8.4e-12.
   - CRR differs from QuantLib's CRR only because QuantLib uses a different up-probability; with QuantLib's probability substituted, ours matches to 8.1e-12 ([note](docs/notes/phase_2_numerical_methods.md)).
-- **Implied volatility** (SPEC §6.4 grid, 520 cases): safeguarded Newton and Brent recover every well-posed case to within a few eps x (price rounding / vega). No solver ever returns an unconverged value ([note](docs/notes/phase_3_iv_and_fd.md)).
+- **Implied volatility** (SPEC §6.4 grid, 520 cases): safeguarded Newton and Brent recover every well-posed case, with errors at most 3.0 (safeguarded Newton) and 1.0 (Brent) times eps x (price rounding / vega). No solver ever returns an unconverged value (0 of 520 cases for either solver) ([note](docs/notes/phase_3_iv_and_fd.md)).
 - **Finite-difference Greeks:** the error traces the predicted V in bump size. The best bump is within a factor of 2.1 of the refined prediction ([note](docs/notes/phase_3_bump_study.md)).
 - **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000, and drops to 0.83 at n = 100 deep out of the money. Control variates cut the cost of a given accuracy 44-fold in the money but only 1.2-fold deep out of the money ([note](docs/notes/phase_2_mc_coverage.md)).
 
@@ -51,7 +52,7 @@ Pure Python and NumPy, single-threaded, on an Apple M5 (one machine; see the lim
 |---|---|---|
 | BSM price, scalar call | 1 option | 23 us |
 | BSM price, vectorized | 1,000,000 options | 21 ms (4.8e7 options per second) |
-| American put, CRR or Leisen-Reimer | N ~ 3200 | 30 ms |
+| American put, CRR or Leisen-Reimer | N ~ 3200 | 30 to 31 ms |
 | American put, BBSR | N = 3200 | 41 ms |
 | Monte Carlo, plain / antithetic / control variate | per path, n = 1e6 | 9.1 / 7.4 / 10.6 ns |
 
@@ -191,7 +192,7 @@ Any warning fails a test. Hypothesis property tests use fixed examples when `HYP
 
 ## Reproducing the results
 
-Each experiment is one command that writes its tables and figures to `experiments/results/`, recording the commit, library versions and platform. Its hypotheses were committed before it first ran.
+Each experiment is one command that writes its tables and figures to `experiments/results/`, recording the commit, library versions and platform. Each study's hypotheses were committed before it first ran; the validation summary only records measurements.
 
 | Result | Command | Needs `oracle` |
 |---|---|---|
@@ -201,6 +202,7 @@ Each experiment is one command that writes its tables and figures to `experiment
 | Study A | `python -m experiments.study_a_iv --config experiments/configs/study_a_iv.toml` | yes |
 | Study B | `python -m experiments.study_b_trees --config experiments/configs/study_b_trees.toml` | yes |
 | Benchmarks | `python -m experiments.benchmarks --config experiments/configs/benchmarks.toml` | no |
+| Validation numbers (this README's Validation section) | `python -m experiments.validation --config experiments/configs/validation.toml` | for the tree comparison |
 
 ## Limitations
 
