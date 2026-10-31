@@ -19,6 +19,7 @@ MODULES = (
     "experiments.study_b_trees",
     "experiments.benchmarks",
     "experiments.validation",
+    "experiments.study_a2_iv",
     "experiments.mp_reference",
     "verify.ledger",
     "verify.checks",

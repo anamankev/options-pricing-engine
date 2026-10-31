@@ -1,0 +1,38 @@
+# Study A2: the solver fixes on Study A's grid and on a new grid.
+# Design and hypotheses: docs/notes/study_a2.md (registered before the study code existed).
+
+option_types = ["CALL", "PUT"]
+mp_digits = 50  # SPEC 8.3, as Study A
+methods = ["brent", "naive_newton", "safeguarded_newton", "lets_be_rational"]
+before_table = "experiments/results/tables/study_a_iv.csv"  # Study A's results, commit 67539c5
+
+[timing]
+repeats = 5  # reported only; no hypothesis is about time
+
+[[grids]]
+name = "grid_a"  # Study A's own grid: before/after on identical points
+F = 100.0
+T = 1.0
+x = { start = -6.0, stop = 6.0, step = 0.25 }
+s = { low = 1e-4, high = 4.0, count = 60 }
+
+[[grids]]
+name = "new_grid"  # never used before: different F, T and spacing
+F = 37.5
+T = 0.4
+x = { start = -5.875, stop = 5.875, step = 0.25 }
+s = { low = 1.3e-4, high = 3.7, count = 57 }
+
+[checks]  # registered in the note, section 2
+h1_region = { abs_x_max = 0.5, s_max = 1e-2 }
+h1_max_median_enorm = 4.0
+h3_max_median_enorm = 2.0
+h3_max_p99_enorm = 20.0
+h4_bad_outcomes = ["MAX_ITERATIONS", "BRACKET_FAILURE", "INFEASIBLE"]
+h5_max_p99_enorm_lbr = 20.0
+h6_max_median_iterations = 12
+
+[output]
+table_csv_pattern = "experiments/results/tables/study_a2_{grid}.csv"
+summary_json = "experiments/results/tables/study_a2_summary.json"
+figure_dir = "experiments/results/figures"
