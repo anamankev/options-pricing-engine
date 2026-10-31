@@ -263,8 +263,8 @@ format = "d"
 
 [[claim]]
 id = "validation.iv_newton_worst"
-readme = "errors at most 3.0 (safeguarded Newton)"
-shown = "3.0"
+readme = "errors at most 1.1 (safeguarded Newton)"
+shown = "1.1"
 source = "json:experiments/results/tables/validation_summary.json#iv_round_trips.safeguarded_newton.worst_error_in_rounding_units"
 format = ".1f"
 

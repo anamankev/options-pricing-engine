@@ -23,8 +23,8 @@ R, Q, STRIKE = IV_R, IV_Q, IV_STRIKE  # shared with experiments/validation.py
 # Accuracy model. The target price carries rounding error up to ~eps x scale (Phase 1 model:
 # scale = F N(td1) + K N(td2) + F phi(d1)(1 + |d1| + |d2|), observed <= 0.76 eps x scale), and the
 # solver evaluates c(s) with the same error, so |s_hat - s| ~ eps x scale / (dc/ds). Observed worst
-# on the SPEC 6.4 grid: 3.3 (naive Newton), 3.0 (safeguarded), 1.0 (Brent, on top of its stopping
-# tolerance). 32 leaves ~10x margin.
+# on the SPEC 6.4 grid: 3.3 (naive Newton), 1.1 (safeguarded; 3.0 before Study A2's fixes),
+# 1.0 (Brent, on top of its stopping tolerance). 32 leaves ~10x margin.
 IV_ROUNDING_FACTOR = 32
 
 

@@ -41,7 +41,7 @@ R1 (European) and the 18 Ju and Zhong (1999) American cases, against QuantLib's 
 - **American benchmarks:** all 18 Ju-Zhong values are reproduced within 2e-3 by Leisen-Reimer and by BBSR (worst difference 1.1e-3).
   - Leisen-Reimer matches QuantLib's tree to 8.4e-12.
   - CRR differs from QuantLib's CRR only because QuantLib uses a different up-probability; with QuantLib's probability substituted, ours matches to 8.1e-12 ([note](docs/notes/phase_2_numerical_methods.md)).
-- **Implied volatility** (SPEC §6.4 grid, 520 cases): safeguarded Newton and Brent recover every well-posed case, with errors at most 3.0 (safeguarded Newton) and 1.0 (Brent) times eps x (price rounding / vega). No solver ever returns an unconverged value (0 of 520 cases for either solver) ([note](docs/notes/phase_3_iv_and_fd.md)).
+- **Implied volatility** (SPEC §6.4 grid, 520 cases): safeguarded Newton and Brent recover every well-posed case, with errors at most 1.1 (safeguarded Newton) and 1.0 (Brent) times eps x (price rounding / vega). No solver ever returns an unconverged value (0 of 520 cases for either solver) ([note](docs/notes/phase_3_iv_and_fd.md)).
 - **Finite-difference Greeks:** the error traces the predicted V in bump size. The best bump is within a factor of 2.1 of the refined prediction ([note](docs/notes/phase_3_bump_study.md)).
 - **Monte Carlo intervals** (2000 replications per cell): 95% coverage holds for n >= 1000, and drops to 0.83 at n = 100 deep out of the money. Control variates cut the cost of a given accuracy 44-fold in the money but only 1.2-fold deep out of the money ([note](docs/notes/phase_2_mc_coverage.md)).
 
