@@ -77,7 +77,7 @@ python -m verify --report verification.md
 python -m verify --full
 ```
 
-This takes about 3 minutes. On top of section 2, it reruns all nine experiments that produced the README's results.
+This takes about 6 minutes. On top of section 2, it reruns all nine experiments that produced the README's results.
 
 Each result file records the exact version of the code (the git commit) that produced it. `--full` checks out that version in a temporary folder, reruns the experiment there, and compares every number with the committed file, so a PASS means the published numbers are exactly what the code produces. Your own copy of the project is not changed.
 

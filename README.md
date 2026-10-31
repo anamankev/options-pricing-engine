@@ -19,7 +19,7 @@ After the [setup](#setup-from-a-fresh-clone), three commands check everything, w
 | Command | What it does | Time |
 |---|---|---|
 | `python -m verify` | Runs every test, checks every number in this README against its result file, and rechecks the headline results (against 50-digit arithmetic, QuantLib and published values). Prints PASS, FAIL or SKIP with the measured number and its limit. | about 20 s |
-| `python -m verify --full` | Also reruns every experiment, at the commit that produced its results, and compares each number with the committed file. | about 3 min |
+| `python -m verify --full` | Also reruns every experiment, at the commit that produced its results, and compares each number with the committed file. | about 6 min |
 | `streamlit run app/playground.py` | A local web page: type in any option and compare this library's prices, Greeks, trees, Monte Carlo and implied vols with QuantLib's. | instant |
 
 [`docs/TESTING.md`](docs/TESTING.md) walks through each step, including exercises that try to break it.
@@ -27,7 +27,7 @@ After the [setup](#setup-from-a-fresh-clone), three commands check everything, w
 ## Status
 
 All seven phases of SPEC §14 are complete.
-- 467 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 468 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
 - 9 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 - Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.

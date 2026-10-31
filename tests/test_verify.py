@@ -80,3 +80,9 @@ def test_study_b_runtime_ranking_is_not_compared() -> None:
     new = {"verdicts": {"B1a": True, "B4": False}, "stats": {"B4_bbsr_share": 0.70}}
     assert cli.compare_summaries("study_b_trees", old, new) == []
     assert "B4" in cli.NOT_COMPARED["study_b_trees"]
+
+
+def test_full_rerun_covers_every_experiment_config() -> None:
+    # A new experiment must be added to verify's list, or --full would silently leave it out.
+    configs = {p.stem for p in (cli.ROOT / "experiments" / "configs").glob("*.toml")}
+    assert {config for _, _, config, _, _ in cli.EXPERIMENTS} == configs

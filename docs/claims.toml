@@ -8,8 +8,8 @@
 
 [[claim]]
 id = "status.tests"
-readme = "467 tests: deterministic, statistical, and oracle tests"
-shown = "467"
+readme = "468 tests: deterministic, statistical, and oracle tests"
+shown = "468"
 source = "count:tests"
 format = "d"
 

@@ -2,7 +2,7 @@
 
     python -m verify            # about half a minute: tests, README numbers, quick rechecks
     python -m verify --full     # also reruns every experiment at the commit that produced its
-                                # committed results and compares (about 3 minutes with QuantLib)
+                                # committed results and compares (about 6 minutes with QuantLib)
     python -m verify --report verification.md   # also save the report as Markdown
 
 Each line says what was checked, what was measured, the limit it was held to, and PASS, FAIL or
@@ -28,16 +28,29 @@ from verify.ledger import ROOT
 
 RESULTS = "experiments/results"
 
-# The README's reproduction table: (experiment, summary file, needs QuantLib).
+# The README's reproduction table: (label, module, config, summary file, needs QuantLib).
 EXPERIMENTS = (
-    ("validation", "validation_summary.json", False),
-    ("greek_bumps", "greek_bumps_summary.json", False),
-    ("mc_coverage", "mc_coverage_summary.json", False),
-    ("benchmarks", "benchmarks_summary.json", False),
-    ("quantlib_reconciliation", "quantlib_reconciliation_summary.json", True),
-    ("study_a_iv", "study_a_iv_summary.json", True),
-    ("study_b_trees", "study_b_summary.json", True),
-    ("study_a2_iv", "study_a2_summary.json", True),
+    ("validation", "validation", "validation", "validation_summary.json", False),
+    ("greek_bumps", "greek_bumps", "greek_bumps", "greek_bumps_summary.json", False),
+    ("mc_coverage", "mc_coverage", "mc_coverage", "mc_coverage_summary.json", False),
+    ("benchmarks", "benchmarks", "benchmarks", "benchmarks_summary.json", False),
+    (
+        "quantlib_reconciliation",
+        "quantlib_reconciliation",
+        "quantlib_reconciliation",
+        "quantlib_reconciliation_summary.json",
+        True,
+    ),
+    ("study_a_iv", "study_a_iv", "study_a_iv", "study_a_iv_summary.json", True),
+    ("study_b_trees", "study_b_trees", "study_b_trees", "study_b_summary.json", True),
+    ("study_a2_iv", "study_a2_iv", "study_a2_iv", "study_a2_summary.json", True),
+    (
+        "study_a2_followup",
+        "study_a2_iv",
+        "study_a2_followup",
+        "study_a2_followup_summary.json",
+        True,
+    ),
 )
 # Never compared: provenance, and anything measured in seconds, which depends on the machine and
 # its load. Benchmarks are compared on their verdicts only. Study B's B4 ranks methods by error at
@@ -53,6 +66,7 @@ NOT_COMPARED = {
     ),
     "study_a_iv": "Not compared: timings.",
     "study_a2_iv": "Not compared: timings.",
+    "study_a2_followup": "Not compared: timings.",
 }
 COMPARE_ONLY = {"benchmarks": ("verdicts",)}
 RELATIVE_TOLERANCE = 1e-9  # same code, same inputs: differences beyond rounding are real changes
@@ -117,7 +131,7 @@ def rerun_experiments() -> list[Result]:
     worktrees: dict[str, Path] = {}
     scratch = Path(tempfile.mkdtemp(prefix="verify-"))
     try:
-        for experiment, summary, needs_oracle in EXPERIMENTS:
+        for experiment, module, config_name, summary, needs_oracle in EXPERIMENTS:
             path = f"{RESULTS}/tables/{summary}"
             committed = json.loads((ROOT / path).read_text())
             commit = committed["environment"]["commit"]
@@ -135,9 +149,9 @@ def rerun_experiments() -> list[Result]:
             command = [
                 sys.executable,
                 "-m",
-                f"experiments.{experiment}",
+                f"experiments.{module}",
                 "--config",
-                f"experiments/configs/{experiment}.toml",
+                f"experiments/configs/{config_name}.toml",
             ]
             print(f"  {name} ...", flush=True)
             env = {**os.environ, "PYTHONPATH": f"{tree / 'src'}{os.pathsep}{tree}"}
