@@ -24,6 +24,12 @@ Numerical form (SPEC 3.4, 3.5):
 - Tails use N(theta d) via scipy.special.ndtr, never 1 - N(d): for d = 9, 1 - N(d) is computed
   as 0 while N(-d) is 1.1e-19 to full relative precision.
 - Deep out-of-the-money prices may underflow to exactly 0. That is the correct float result.
+- Accuracy is absolute: |error| <= 64 eps x scale, where scale is about the size of S and K
+  (tests/test_black_scholes.py). Near the money at extremely small total volatility the price
+  itself is tiny and F N(d1) - K N(d2) cancels, so its relative error grows (about 7e-5 at
+  sigma sqrt(T) = 1e-12), while the absolute error stays a fraction of eps S. Where relative
+  accuracy of such a price matters, as in implied volatility, pricing.implied_vol.black_price
+  evaluates it with extra digits (Study A2).
 
 Boundary policy (SPEC 3.4):
 - T = 0: the price is the intrinsic value max(theta (S - K), 0).

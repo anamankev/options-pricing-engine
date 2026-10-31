@@ -13,8 +13,8 @@ Feasibility (SPEC 6.2, as amended in Phase 3 and Study A2). With tol = 8 eps max
 - c below the intrinsic value (by more than tol when iota > 0): InfeasiblePriceError.
 - c >= upper - tol: InfeasiblePriceError (s would be infinite).
 - c at or below iota (within tol): s = 0, reason AT_LOWER_BOUND. Any positive time value
-  c - iota is solved (Study A2 follow-up): even a time value below one ulp of c can pin s, because
-  deep in the money it is extremely sensitive to s; how accurately is set by the problem's
+  c - iota is solved (Study A2 follow-up): even a time value of only a few ulps of c can pin s,
+  because deep in the money it is extremely sensitive to s; how accurately is set by the problem's
   conditioning, not by the price's rounding. A 2 eps max(F, K) cutoff still dropped 20 such
   prices that Let's Be Rational solved to within 4% (Study A2, H2). Out of the money iota is
   exactly 0, so a deep out-of-the-money price such as 1e-20 is solved too.

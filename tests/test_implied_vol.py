@@ -124,7 +124,7 @@ def test_in_the_money_tiny_positive_time_value_is_solved() -> None:
     # Study A2 follow-up (SPEC 6.2): any positive time value is solved, and the answer reproduces
     # the price's time value to the solver's stopping rule (4 eps relative residual).
     F, K = 100.0, 90.0
-    c = (F - K) + 1e-13  # time value ~ 0.45 eps max(F, K), below one ulp of c
+    c = (F - K) + 1e-13  # time value ~ 4.5 eps max(F, K), about 56 ulps of c
     res = iv.solve_black(CALL, c, F=F, K=K, T=1.0)
     assert res.reason is IVReason.CONVERGED
     assert res.total_vol is not None

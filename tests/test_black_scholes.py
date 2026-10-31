@@ -188,3 +188,15 @@ def test_price_approaches_zero_vol_limit_as_total_vol_shrinks(
         assert math.isfinite(value)
         assert value >= 0.0
         assert limit - rounding <= value <= limit + D * F * s / math.sqrt(2 * math.pi) + rounding
+
+
+@pytest.mark.parametrize("sigma", [1e-4, 1e-6, 1e-8, 1e-10, 1e-12])
+def test_tiny_vol_near_the_money_keeps_the_absolute_budget(sigma: float) -> None:
+    # External review: relative error grows near the money as sigma -> 0 (7e-5 at 1e-12), because
+    # the two terms cancel. The documented contract is absolute (module docstring); this pins it
+    # down there. Expected values: computed by mpmath at 50 significant digits.
+    for S in (100.0, 100.0 * (1 + 1e-9), 100.0 * (1 - 1e-9)):
+        case = {"S": S, "K": 100.0, "T": 1.0, "r": 0.0, "q": 0.0, "sigma": sigma}
+        for option_type, th in ((CALL, 1), (PUT, -1)):
+            exact, scale = mp_price_and_error_scale(th, **case)
+            assert abs(bs.price(option_type, **case) - exact) <= ROUNDING_FACTOR * EPS * scale

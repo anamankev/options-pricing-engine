@@ -27,7 +27,7 @@ After the [setup](#setup-from-a-fresh-clone), three commands check everything, w
 ## Status
 
 All seven phases of SPEC §14 are complete.
-- 468 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 493 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
 - 9 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 - Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.
@@ -238,6 +238,7 @@ Model:
 
 Numerical (each documented in its note):
 - Our implied-volatility solvers match Let's Be Rational's accuracy (Study A2), but are much slower per solve because they evaluate the price with extra digits where it cancels. Use Let's Be Rational where speed matters.
+- Black-Scholes prices are accurate in absolute terms (a small multiple of eps x S). Near the money at extremely small volatility the price itself is tiny, so its relative error grows; the absolute error does not.
 - Leisen-Reimer is only first order for American options.
 - BBSR's error changes sign as N doubles, so a single BBSR price can be luckier or unluckier than its convergence order suggests.
 
