@@ -8,9 +8,21 @@ Components:
 - Monte Carlo with antithetic and control variates;
 - implied-volatility solvers (Brent, naive and safeguarded Newton) with full diagnostics.
 
-These serve two pre-registered numerical studies: implied-volatility solver accuracy (Study A) and American-option tree convergence (Study B).
+These serve pre-registered numerical studies: implied-volatility solver accuracy (Study A, and Study A2, which fixes what A found) and American-option tree convergence (Study B).
 
 The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). Each phase's record is in [`docs/notes/`](docs/notes/).
+
+## Verify it yourself
+
+After the [setup](#setup-from-a-fresh-clone), three commands check everything, with no code reading needed:
+
+| Command | What it does | Time |
+|---|---|---|
+| `python -m verify` | Runs every test, checks every number in this README against its result file, and rechecks the headline results (against 50-digit arithmetic, QuantLib and published values). Prints PASS, FAIL or SKIP with the measured number and its limit. | about 20 s |
+| `python -m verify --full` | Also reruns every experiment, at the commit that produced its results, and compares each number with the committed file. | about 3 min |
+| `streamlit run app/playground.py` | A local web page: type in any option and compare this library's prices, Greeks, trees, Monte Carlo and implied vols with QuantLib's. | instant |
+
+[`docs/TESTING.md`](docs/TESTING.md) walks through each step, including exercises that try to break it.
 
 ## Status
 
@@ -38,7 +50,7 @@ R1 (European) and the 18 Ju and Zhong (1999) American cases, against QuantLib's 
 Two fixes to our implied-volatility solver, each tested against registered hypotheses on Study A's grid, a new grid and, after one hypothesis failed, a third grid never run before:
 - **Near the money at small volatility**, the price is now evaluated with extra digits wherever its two terms cancel. The safeguarded Newton's median normalized error there fell from 683 to 0.0.
 - **In the money**, the solver now works on the out-of-the-money counterpart (put-call parity) and solves any positive time value.
-  - The first version kept a small cutoff and still missed 20 prices that Let's Be Rational solved. That hypothesis was refuted, the cutoff removed, and the change confirmed on the third grid.
+  - The first fix kept a small cutoff and still missed 20 prices that Let's Be Rational solved. That hypothesis was refuted, the cutoff removed, and the change confirmed on the third grid.
   - It now misses 0 of the 1238 prices Let's Be Rational solves there.
 - **Accuracy now matches Let's Be Rational's:** 99th-percentile normalized error 2.20 on the third grid.
 - **The cost is speed:** a median of 244 to 340 us per solve, against 7 us for Let's Be Rational, because of the extra-digit evaluation.
@@ -164,7 +176,7 @@ cd options-pricing-engine
 python3.12 -m venv .venv         # CI tests 3.11 and 3.12; plain python3 may be newer
 source .venv/bin/activate
 python -m pip install --upgrade pip
-pip install -e ".[dev,oracle]"   # drop ",oracle" to skip QuantLib, lets-be-rational and vollib
+pip install -e ".[dev,oracle,app]"   # oracle: QuantLib etc. for cross-checks; app: the playground
 ```
 
 Windows (untested; CI runs on Linux):
@@ -175,10 +187,14 @@ cd options-pricing-engine
 py -3.12 -m venv .venv
 .venv\Scripts\activate
 python -m pip install --upgrade pip
-pip install -e ".[dev,oracle]"
+pip install -e ".[dev,oracle,app]"
 ```
 
-The `oracle` extra installs QuantLib, lets-be-rational and vollib, which are used only to cross-check results. NumPy 2.5 and SciPy 1.18 need Python 3.12 or newer, so on 3.11 pip installs older releases; CI tests both, and every experiment records the exact versions it ran with.
+Both extras are optional; `pip install -e ".[dev]"` is enough for the tests.
+- The `oracle` extra installs QuantLib, lets-be-rational and vollib, used only to cross-check results. Without it, the checks that need them are skipped, with a note saying so.
+- The `app` extra installs Streamlit, for the playground.
+
+NumPy 2.5 and SciPy 1.18 need Python 3.12 or newer, so on 3.11 pip installs older releases; CI tests both, and every experiment records the exact versions it ran with.
 
 ## Commands
 
@@ -257,7 +273,11 @@ src/pricing/      library: contracts, errors, black_scholes, binomial, monte_car
                   finite_diff, oracles
 tests/            pytest suite; conftest.py holds the Hypothesis profiles
 experiments/      runnable studies, configs/, results/{tables,figures}
+verify/           `python -m verify`: the one-command check, and the README claims ledger
+app/              the local playground (compare.py holds its tested logic)
 docs/SPEC.md      technical standard
+docs/claims.toml  every number in this README, and the file it comes from
+docs/TESTING.md   step-by-step guide to checking the project yourself
 docs/notes/       research notes (template: TEMPLATE.md)
 .github/          CI workflow
 ```
