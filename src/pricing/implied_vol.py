@@ -9,14 +9,22 @@ upper bound F (call) or K (put) as s grows without limit. So a solution exists e
 iota < c < upper, and it is unique. Its derivative is dc/ds = F phi(d1) = K phi(d2) (SPEC 6.1).
 The solvers work in s and return sigma = s / sqrt(T).
 
-Feasibility (SPEC 6.2, as amended in Phase 3). With tol = 8 eps max(F, K):
+Feasibility (SPEC 6.2, as amended in Phase 3 and Study A2). With tol = 8 eps max(F, K):
 - c below the intrinsic value (by more than tol when iota > 0): InfeasiblePriceError.
-- c within tol of iota: s = 0, reason AT_LOWER_BOUND.
 - c >= upper - tol: InfeasiblePriceError (s would be infinite).
-The tolerance exists because iota = theta (F - K) carries a rounding error of about eps max(F, K)
-when the option is in the money. Out of the money iota is exactly 0, so the lower-bound tolerance
-is 0 there. A deep out-of-the-money price such as 1e-20 has a well-conditioned implied volatility,
-and SPEC 6.2's original rule would have returned s = 0 for it (a 100% error).
+- In the money, a time value c - iota of at most 2 eps max(F, K) is rounding: s = 0, reason
+  AT_LOWER_BOUND. Out of the money iota is exactly 0, so only c = 0 is at the lower bound: a deep
+  out-of-the-money price such as 1e-20 has a well-conditioned implied volatility.
+
+In the money, the solvers work on the out-of-the-money counterpart (Study A2): by put-call parity
+the in-the-money price minus iota is exactly the other option's price, with the same volatility.
+Solving the in-the-money problem directly compares c(s) with c where both are close to iota, so
+the time value that determines s is lost in the rounding of iota.
+
+Price evaluation. Near the money at small s, c(s) = theta (F N(theta d1) - K N(theta d2)) subtracts
+two nearly equal numbers. black_price detects this (CANCELLATION_LIMIT) and recomputes c(s) with
+mpmath at enough digits, so every solver sees c(s) to a few eps relative (Study A found the
+safeguarded Newton's median normalized error near the money at small s to be 683 without this).
 
 Solvers (SPEC 6.3). Each returns an IVResult; sigma is None unless the solver converged.
 1. Brent: bracket [0, s_hi], s_hi = 1, 2, 4, ... until c(s_hi) > c, capped at 20 (else
@@ -49,6 +57,7 @@ import math
 import sys
 from dataclasses import dataclass
 
+import mpmath
 from scipy.optimize import brentq
 from scipy.special import ndtr
 
@@ -56,7 +65,20 @@ from pricing.contracts import OptionType, option_sign, validate_scalar_inputs
 from pricing.errors import ConvergenceError, InfeasiblePriceError, PricingInputError
 
 EPS = sys.float_info.epsilon
-BOUND_TOL_FACTOR = 8.0  # SPEC 6.2: tol = 8 eps max(F, K)
+BOUND_TOL_FACTOR = 8.0  # SPEC 6.2: tol = 8 eps max(F, K), for infeasibility
+# SPEC 6.2 (Study A2 amendment). In the money, the time value c - iota of a correctly rounded
+# price is uncertain by about eps max(F, K): half an ulp from rounding c itself and half from the
+# parity subtraction. A time value at most twice that is rounding, so s = 0 (AT_LOWER_BOUND).
+# Above it the price carries information: Study A found 30 such prices discarded by the old
+# 8 eps max(F, K) rule, 16 of them solved by Let's Be Rational to within 0.4%.
+TIME_VALUE_TOL_FACTOR = 2.0
+# c(s) = theta (a - b) with a = F N(theta d1), b = K N(theta d2) (SPEC 6.1). When max(a, b) is
+# more than this many times c, the subtraction has lost log10(max(a, b) / c) digits; c is then
+# recomputed with mpmath with that many extra digits (plus a guard) on the exact inputs. A factor
+# of 4 bounds the double path's relative error at about 4 eps x the rounding of a and b.
+CANCELLATION_LIMIT = 4.0
+CANCELLATION_GUARD_DIGITS = 10  # beyond the 17 a double needs and the digits cancelled
+MP_MAX_DIGITS = 400  # far past any cancellation a double can express (c >= 5e-324)
 CONVERGENCE_FACTOR = 4.0  # SPEC 6.3: 4 eps relative residual, step or bracket width
 S_MAX = 20.0  # SPEC 6.3: largest total volatility Brent's bracket search tries
 BRENT_XTOL = 1e-15  # SPEC 6.3
@@ -201,18 +223,13 @@ def solve_black(
         raise InfeasiblePriceError(
             f"price {c!r} is at or above the upper bound {upper!r}: volatility would be infinite"
         )
-    if abs(c - lower) <= lower_tol:
-        return IVResult(
-            0.0,
-            0.0,
-            lower - c,
-            0,
-            0,
-            True,
-            IVReason.AT_LOWER_BOUND,
-            method,
-            () if record_path else None,
-        )
+    if lower > 0.0:  # in the money: solve the out-of-the-money counterpart (put-call parity)
+        time_value = c - lower
+        if time_value <= TIME_VALUE_TOL_FACTOR * EPS * max(F, K):
+            return _at_lower_bound(method, lower - c, record_path)
+        theta, c, lower = -theta, time_value, 0.0
+    if c == 0.0:  # out of the money (possibly after the parity step): c(0) = 0
+        return _at_lower_bound(method, -c, record_path)
 
     problem = _Problem(theta, F, K, math.log(F / K), T, c, lower)
     if method is IVMethod.BRENT:
@@ -222,13 +239,49 @@ def solve_black(
     return _safeguarded_newton(problem, max_iterations or NEWTON_MAXITER, record_path)
 
 
+def _at_lower_bound(method: IVMethod, residual: float, record_path: bool) -> IVResult:
+    """s = 0: the price carries no information about volatility (SPEC 6.2)."""
+    return IVResult(
+        0.0, 0.0, residual, 0, 0, True, IVReason.AT_LOWER_BOUND, method, () if record_path else None
+    )
+
+
 def black_price(p: _Problem, s: float) -> float:
-    """Undiscounted Black price c(s) (SPEC 3.1 in Black form)."""
+    """Undiscounted Black price c(s) (SPEC 3.1 in Black form), to a few eps relative: when the
+    two terms nearly cancel, c is recomputed with extra digits (module docstring)."""
     if s == 0.0:
         return p.lower
     d1 = p.x / s + 0.5 * s
     th = p.theta
-    return th * (p.F * float(ndtr(th * d1)) - p.K * float(ndtr(th * (d1 - s))))
+    a = p.F * float(ndtr(th * d1))
+    b = p.K * float(ndtr(th * (d1 - s)))
+    c = th * (a - b)
+    largest = max(a, b)
+    if largest == 0.0 or (c > 0.0 and largest <= CANCELLATION_LIMIT * c):
+        return c  # no cancellation (or both terms underflowed, so c = 0 exactly)
+    return _black_price_extra_digits(p, s, largest, c)
+
+
+def _black_price_extra_digits(p: _Problem, s: float, largest: float, c: float) -> float:
+    """c(s) evaluated with mpmath on the exact double inputs, with enough digits that the
+    cancellation leaves at least 17 + CANCELLATION_GUARD_DIGITS, then rounded once."""
+    lost = math.log10(largest / c) if c > 0.0 else -math.log10(EPS)  # c <= 0: all digits lost
+    digits = 17 + math.ceil(lost) + CANCELLATION_GUARD_DIGITS
+    while True:
+        with mpmath.workdps(digits):
+            F, K, s_mp = mpmath.mpf(p.F), mpmath.mpf(p.K), mpmath.mpf(s)
+            d1 = mpmath.log(F / K) / s_mp + s_mp / 2
+            value = p.theta * (
+                F * mpmath.ncdf(p.theta * d1) - K * mpmath.ncdf(p.theta * (d1 - s_mp))
+            )
+            if value > 0:
+                cancelled = math.ceil(float(mpmath.log10(mpmath.mpf(largest) / value)))
+                needed = 17 + CANCELLATION_GUARD_DIGITS + cancelled
+            else:  # every digit cancelled even here: c(s) > 0 for s > 0, so use more digits
+                needed = digits + 1
+        if needed <= digits or digits >= MP_MAX_DIGITS:
+            return float(value)
+        digits = min(2 * digits, MP_MAX_DIGITS)
 
 
 def black_vega(p: _Problem, s: float) -> float:

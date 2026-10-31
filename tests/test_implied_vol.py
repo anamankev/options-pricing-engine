@@ -1,9 +1,11 @@
 """Implied-volatility solvers (SPEC 6): feasibility, SPEC 6.4 round trips, failure reporting."""
 
 import dataclasses
+import itertools
 import math
 from typing import Any
 
+import mpmath
 import pytest
 from experiments.validation import IV_GRID, IV_Q, IV_R, IV_STRIKE, iv_market
 from scipy.special import ndtr
@@ -133,6 +135,109 @@ def test_tiny_out_of_the_money_price_is_solved_not_rounded_to_zero() -> None:
         s = sigma * math.sqrt(OTM["T"])
         assert res.total_vol is not None
         assert abs(res.total_vol - s) <= _allowed_error(CALL, -0.7, s, method)
+
+
+# --- Study A2 fixes: no cancellation near the money, in the money via out of the money ---------
+
+# black_price against mpmath on exact inputs. The double path is taken only when the two terms
+# cancel by at most a factor CANCELLATION_LIMIT = 4, each term carrying ~2 eps, so its error is
+# at most ~4 x 2 x 2 = 16 eps; the extra-digit path is correctly rounded. Observed worst on this
+# grid: 1.94 eps (the old direct formula: 1.25e10 eps, at s = 1e-10).
+BLACK_PRICE_RTOL = 16 * EPS
+NEAR_MONEY_X = (
+    0.0,
+    1e-12,
+    -1e-12,
+    1e-8,
+    -1e-8,
+    1e-6,
+    -1e-6,
+    1e-4,
+    -1e-4,
+    1e-3,
+    -1e-3,
+    1e-2,
+    -1e-2,
+    0.05,
+    -0.05,
+    0.1,
+    -0.1,
+    0.3,
+    -0.3,
+    0.5,
+    -0.5,
+)
+SMALL_S = (1e-10, 1e-8, 1e-6, 1e-4, 1e-3, 3e-3, 1e-2, 3e-2, 0.1, 0.3, 1.0)
+
+
+def _mp_black(theta: int, F: float, K: float, s: float) -> float:
+    # Expected values: computed by mpmath at 60 significant digits on the exact double inputs.
+    with mpmath.workdps(60):
+        F_, K_, s_ = (mpmath.mpf(v) for v in (F, K, s))
+        d1 = mpmath.log(F_ / K_) / s_ + s_ / 2
+        return float(theta * (F_ * mpmath.ncdf(theta * d1) - K_ * mpmath.ncdf(theta * (d1 - s_))))
+
+
+@pytest.mark.parametrize("theta", [1, -1])
+def test_black_price_keeps_relative_accuracy_near_the_money_at_small_vol(theta: int) -> None:
+    failures = []
+    for x, s in itertools.product(NEAR_MONEY_X, SMALL_S):
+        F = 100.0
+        K = F * math.exp(-x)
+        problem = iv._Problem(theta, F, K, math.log(F / K), 1.0, 0.0, max(theta * (F - K), 0.0))
+        exact = _mp_black(theta, F, K, s)
+        if exact == 0.0:
+            continue
+        got = iv.black_price(problem, s)
+        if abs(got - exact) > BLACK_PRICE_RTOL * exact:
+            failures.append((x, s, got, exact))
+    assert not failures, failures[:5]
+
+
+# A round trip near the money at small vol is well conditioned: c ~ 0.4 F s, so s inherits the
+# price's relative error. Target rounding (1 eps) + stopping rule (4 eps relative residual) +
+# evaluation (2 eps) is ~7 eps; 16 eps leaves 2x margin. Brent also stops at its absolute
+# xtol = 1e-15 (SPEC 6.3), which dominates at small s. Moneyness is set relative to s,
+# x = h s with |h| <= 2, so every price is informative (|h| >> 1 underflows to 0).
+NEAR_MONEY_S_RTOL = 16 * EPS
+
+
+@pytest.mark.parametrize("method", [IVMethod.SAFEGUARDED_NEWTON, IVMethod.BRENT])
+def test_near_the_money_small_vol_round_trip_is_accurate(method: IVMethod) -> None:
+    failures = []
+    for h, s, theta in itertools.product(
+        (0.0, 0.5, -0.5, 1.0, -1.0, 2.0, -2.0), (1e-6, 1e-4, 1e-3, 1e-2), (1, -1)
+    ):
+        F, T = 100.0, 1.0
+        K = F * math.exp(-h * s)
+        option_type = CALL if theta == 1 else PUT
+        c = _mp_black(theta, F, K, s)
+        res = iv.solve_black(option_type, c, F=F, K=K, T=T, method=method)
+        allowed = NEAR_MONEY_S_RTOL * s
+        if method is IVMethod.BRENT:
+            allowed += iv.BRENT_XTOL
+        if res.total_vol is None or abs(res.total_vol - s) > allowed:
+            failures.append((h, s, theta, res.reason, res.total_vol))
+    assert not failures, failures[:5]
+
+
+def test_in_the_money_price_with_informative_time_value_is_solved() -> None:
+    # Deep in the money, small vol: the time value is a few eps max(F, K), below the old 8-eps
+    # lower-bound rule, yet the price still pins sigma because the time value is so sensitive to s
+    # (elasticity d ln c_otm / d ln s ~ x^2 / s^2). Study A found 30 such prices returned as s = 0.
+    F, K, T, s = 100.0, 100.0 * math.exp(-0.5), 1.0, 0.0685  # put ~ 1e-13 ~ 4.5 eps F
+    put = _mp_black(-1, F, K, s)  # the out-of-the-money counterpart
+    call = put + (F - K)  # rounded once, as a quoted price would be
+    time_value = call - (F - K)
+    assert 2 * EPS * F < time_value < iv.BOUND_TOL_FACTOR * EPS * F  # precondition
+    # Allowed error: the time value's rounding (~eps F) relative to it, over the elasticity.
+    elasticity = (0.5 / s) ** 2
+    allowed = (EPS * F / time_value) / elasticity * s
+    for method in (IVMethod.SAFEGUARDED_NEWTON, IVMethod.BRENT):
+        res = iv.solve_black(CALL, call, F=F, K=K, T=T, method=method)
+        assert res.reason is IVReason.CONVERGED, method
+        assert res.total_vol is not None
+        assert abs(res.total_vol - s) <= 4 * allowed, (method, res.total_vol)
 
 
 @pytest.mark.parametrize(

@@ -15,7 +15,7 @@ The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). E
 ## Status
 
 All seven phases of SPEC §14 are complete.
-- 446 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 451 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
 - 7 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 - Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.
@@ -112,7 +112,7 @@ from pricing.implied_vol import implied_volatility, implied_volatility_result
 
 market = dict(S=42.0, K=40.0, T=0.5, r=0.10, q=0.0)
 price = bs.price(OptionType.CALL, **market, sigma=0.20)
-implied_volatility(OptionType.CALL, price, **market)  # 0.20000000000000015, i.e. 0.2 to 1 ulp
+implied_volatility(OptionType.CALL, price, **market)  # 0.19999999999999996, i.e. 0.2 to 2 ulps
 implied_volatility_result(OptionType.CALL, price, **market).iterations  # full diagnostics
 ```
 
