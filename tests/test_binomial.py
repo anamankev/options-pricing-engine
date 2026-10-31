@@ -319,3 +319,18 @@ def test_bbs_records_a_boundary_entry_per_layer() -> None:
     res = bt.bbs(PUT, **R4_PUT, n_steps=50, exercise=AMERICAN, record_boundary=True)
     assert res.exercise_boundary is not None
     assert len(res.exercise_boundary) == 50
+
+
+@pytest.mark.parametrize("method", [bt.crr, bt.leisen_reimer, bt.bbs, bt.bbsr])
+@pytest.mark.parametrize("exercise", ["american", "AMERICAN", None, OptionType.PUT, 1])
+def test_exercise_must_be_an_exercise_style(method: Any, exercise: object) -> None:
+    # A string "american" once priced a European option while reporting exercise="american"
+    # (found by an external review): `exercise is ExerciseStyle.AMERICAN` was simply False.
+    market = {"S": 40.0, "K": 40.0, "T": 0.5833, "r": 0.0488, "q": 0.0, "sigma": 0.2}
+    with pytest.raises(PricingInputError, match="exercise must be ExerciseStyle"):
+        method(
+            OptionType.PUT,
+            **market,
+            n_steps=100 if method is not bt.leisen_reimer else 101,
+            exercise=exercise,
+        )

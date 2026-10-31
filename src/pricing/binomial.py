@@ -63,7 +63,7 @@ from pricing.contracts import (
     option_sign,
     validate_scalar_inputs,
 )
-from pricing.errors import TreeParameterError
+from pricing.errors import PricingInputError, TreeParameterError
 
 
 @dataclass(frozen=True)
@@ -113,6 +113,7 @@ def crr(
     allow_extreme_vol: bool = False,
 ) -> TreeResult:
     """Cox-Ross-Rubinstein tree price (SPEC 4.1, 4.4)."""
+    _check_exercise(exercise)
     lattice = _crr_lattice(option_type, S, K, T, r, q, sigma, n_steps, allow_extreme_vol)
     values = _payoff(lattice, _spots(lattice, lattice.n_steps))
     value, boundary = _roll_back(lattice, values, lattice.n_steps, exercise, record_boundary)
@@ -136,6 +137,7 @@ def leisen_reimer(
     """Leisen-Reimer tree price, n_steps odd (SPEC 4.2, 4.4)."""
     theta = option_sign(option_type)
     m = _tree_inputs(S, K, T, r, q, sigma, allow_extreme_vol)
+    _check_exercise(exercise)
     _check_steps(n_steps, odd=True)
     dt = m.T / n_steps
     s = m.sigma * math.sqrt(m.T)
@@ -185,6 +187,7 @@ def bbs(
     allow_extreme_vol: bool = False,
 ) -> TreeResult:
     """Broadie-Detemple BBS: CRR with Black-Scholes values one step before expiry (SPEC 4.3)."""
+    _check_exercise(exercise)
     lattice = _crr_lattice(option_type, S, K, T, r, q, sigma, n_steps, allow_extreme_vol)
     m, last = lattice.m, lattice.n_steps - 1
     spots = _spots(lattice, last)
@@ -227,6 +230,7 @@ def bbsr(
     allow_extreme_vol: bool = False,
 ) -> TreeResult:
     """BBSR = 2 BBS(N) - BBS(N / 2), n_steps even (SPEC 4.3). Parameters are those of BBS(N)."""
+    _check_exercise(exercise)
     _check_steps(n_steps, even=True)
     full = bbs(
         option_type,
@@ -309,6 +313,16 @@ def _tree_inputs(
             "use black_scholes.price for those boundary cases"
         )
     return m
+
+
+def _check_exercise(exercise: object) -> None:
+    """Only an ExerciseStyle is accepted. A string such as "american" is not an ExerciseStyle, so
+    `exercise is ExerciseStyle.AMERICAN` would be False and the tree would silently price a
+    European option while reporting exercise="american"."""
+    if not isinstance(exercise, ExerciseStyle):
+        raise PricingInputError(
+            f"exercise must be ExerciseStyle.EUROPEAN or ExerciseStyle.AMERICAN; got {exercise!r}"
+        )
 
 
 def _check_steps(n_steps: int, *, odd: bool = False, even: bool = False) -> None:
