@@ -25,7 +25,7 @@ All seven phases of SPEC §14 are complete.
 ### Study A: implied-volatility solvers ([note](docs/notes/study_a.md))
 5880 problems across log-moneyness and total volatility, with targets computed at 50 digits:
 - **Let's Be Rational** (Jaeckel 2015) is as accurate as the problem's conditioning allows wherever the price carries information about volatility: median error 1 ulp, 99th-percentile normalized error 1.99, in 2 iterations.
-- **Our safeguarded Newton** converges everywhere Brent does, in fewer iterations (median 9 against 12). Near the money at small volatility, cancellation in the price formula costs it accuracy (median normalized error 683).
+- **Our safeguarded Newton** converged everywhere Brent did, in fewer iterations (median 9 against 12). Near the money at small volatility, cancellation in the price formula cost it accuracy (median normalized error 683). Study A2 fixed this (below).
 - **SPEC §10's well-posedness rule** mislabels problems in both directions. A conditioning-based rule classifies them correctly. It was applied post hoc and is labelled as such.
 
 ### Study B: binomial-tree convergence ([note](docs/notes/study_b.md))
@@ -33,6 +33,15 @@ R1 (European) and the 18 Ju and Zhong (1999) American cases, against QuantLib's 
 - CRR is first order and oscillates between odd and even N; Richardson extrapolation on it helps only 32% of the time.
 - Leisen-Reimer is second order for European options (slope -1.995) but first order for American puts (median -1.00).
 - BBSR has the smallest error at a given runtime in 85% of comparisons on American puts (median order -1.24), although its error changes sign as N doubles. This ranking uses measured runtimes, so it depends on the machine and its load.
+
+### Study A2: closing Study A's gaps ([note](docs/notes/study_a2.md))
+Two fixes to our implied-volatility solver, each tested against registered hypotheses on Study A's grid, a new grid and, after one hypothesis failed, a third grid never run before:
+- **Near the money at small volatility**, the price is now evaluated with extra digits wherever its two terms cancel. The safeguarded Newton's median normalized error there fell from 683 to 0.0.
+- **In the money**, the solver now works on the out-of-the-money counterpart (put-call parity) and solves any positive time value.
+  - The first version kept a small cutoff and still missed 20 prices that Let's Be Rational solved. That hypothesis was refuted, the cutoff removed, and the change confirmed on the third grid.
+  - It now misses 0 of the 1238 prices Let's Be Rational solves there.
+- **Accuracy now matches Let's Be Rational's:** 99th-percentile normalized error 2.20 on the third grid.
+- **The cost is speed:** a median of 244 to 340 us per solve, against 7 us for Let's Be Rational, because of the extra-digit evaluation.
 
 ### Validation
 - **Exact values:** prices agree with a 50-digit mpmath evaluation on 288 cases. The worst error is 0.76 eps times the formula's error scale, against a budget of 64.
@@ -212,8 +221,7 @@ Model:
 - Constant volatility, rates and dividend yield. There are no market data, smiles or discrete dividends (see Scope).
 
 Numerical (each documented in its note):
-- Our implied-volatility solvers lose accuracy near the money at very small total volatility, where the Black formula subtracts two nearly equal terms.
-- On 30 informative in-the-money prices they return zero total volatility, because the time value is below their lower-bound tolerance; Let's Be Rational recovers 16 of these. Use Let's Be Rational where those regimes matter.
+- Our implied-volatility solvers match Let's Be Rational's accuracy (Study A2), but are much slower per solve because they evaluate the price with extra digits where it cancels. Use Let's Be Rational where speed matters.
 - Leisen-Reimer is only first order for American options.
 - BBSR's error changes sign as N doubles, so a single BBSR price can be luckier or unluckier than its convergence order suggests.
 
@@ -226,7 +234,7 @@ Validation:
 - Some citations' page or equation numbers are not yet checked against the books (SPEC §17).
 - Three reference values (R2, R3, R4b) are reproduced numerically but not yet checked against the printed primary source, and R1's Hull edition and page are unrecorded (SPEC §9.1).
 - Analyses added after seeing data are labelled post hoc in their notes and are exploratory, for example:
-  - Study A's informative region (the source of its headline accuracy numbers);
+  - Study A's informative region (Study A2 then registered it in advance and confirmed it on two new grids);
   - the bump study's refined optimum;
   - the benchmark scaling model.
 

@@ -516,3 +516,72 @@ reason = "the nominal level of the intervals, a definition"
 text = "3"
 readme = "including 3D error surfaces"
 reason = "names the figure type"
+
+# --- Study A2 -----------------------------------------------------------------------------------
+
+[[claim]]
+id = "study_a2.near_money_before"
+readme = "median normalized error there fell from 683 to 0.0"
+shown = "683"
+source = "json:experiments/results/tables/study_a2_summary.json#before_grid_a.h1_sn_median_enorm"
+format = ".0f"
+
+[[claim]]
+id = "study_a2.near_money_after"
+readme = "median normalized error there fell from 683 to 0.0"
+shown = "0.0"
+source = "json:experiments/results/tables/study_a2_summary.json#grids.grid_a.h1_sn_median_enorm"
+format = ".1f"
+
+[[claim]]
+id = "study_a2.first_version_misses"
+readme = "still missed 20 prices that Let's Be Rational solved"
+shown = "20"
+source = "json:experiments/results/tables/study_a2_summary.json#grids.*.h2_sn_missed"
+aggregate = "len"
+format = "d"
+
+[[claim]]
+id = "study_a2.followup_misses"
+readme = "It now misses 0 of the 1238 prices Let's Be Rational solves there."
+shown = "0"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.confirm_grid.h2_sn_missed"
+aggregate = "len"
+format = "d"
+
+[[claim]]
+id = "study_a2.followup_lbr_solved"
+readme = "It now misses 0 of the 1238 prices Let's Be Rational solves there."
+shown = "1238"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.confirm_grid.h2_lbr_converged"
+format = "d"
+
+[[claim]]
+id = "study_a2.followup_p99"
+readme = "99th-percentile normalized error 2.20 on the third grid"
+shown = "2.20"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.confirm_grid.per_method.safeguarded_newton.e_norm_p99"
+format = ".2f"
+
+[[claim]]
+id = "study_a2.time_low"
+readme = "a median of 244 to 340 us per solve, against 7 us for Let's Be Rational"
+shown = "244"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.*.per_method.safeguarded_newton.time_median_us"
+aggregate = "min"
+format = ".0f"
+
+[[claim]]
+id = "study_a2.time_high"
+readme = "a median of 244 to 340 us per solve, against 7 us for Let's Be Rational"
+shown = "340"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.*.per_method.safeguarded_newton.time_median_us"
+aggregate = "max"
+format = ".0f"
+
+[[claim]]
+id = "study_a2.time_lbr"
+readme = "a median of 244 to 340 us per solve, against 7 us for Let's Be Rational"
+shown = "7"
+source = "json:experiments/results/tables/study_a2_followup_summary.json#grids.confirm_grid.per_method.lets_be_rational.time_median_us"
+format = ".0f"
