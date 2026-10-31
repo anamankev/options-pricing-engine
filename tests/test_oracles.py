@@ -5,7 +5,6 @@ code), not when this file is collected, so the fast CI job, which does not insta
 still collect it. In the full suite a missing QuantLib fails loudly with ImportError.
 """
 
-import dataclasses
 import itertools
 import math
 from pathlib import Path
@@ -19,6 +18,7 @@ from experiments.quantlib_reconciliation import (
     iter_cases,
     load_config,
 )
+from experiments.validation import TREE_GRID, crr_with_quantlib_probability
 
 from pricing import binomial as bt
 from pricing import black_scholes as bs
@@ -133,27 +133,12 @@ def test_quantlib_american_engine_is_available() -> None:
 
 # 192 cases: S in {90, 100, 110}, K = 100, 30 or 365 days, (r, q) in {(0.05, 0.02), (-0.01, 0.03)},
 # sigma in {0.2, 0.4}, N in {101, 401}, call and put, European and American.
-TREE_GRID = list(
-    itertools.product(
-        (90.0, 100.0, 110.0),
-        (30, 365),
-        ((0.05, 0.02), (-0.01, 0.03)),
-        (0.2, 0.4),
-        (101, 401),
-        (OptionType.CALL, OptionType.PUT),
-        (ExerciseStyle.EUROPEAN, ExerciseStyle.AMERICAN),
-    )
-)
+# Tree comparison grid: shared with the validation summary (experiments/validation.py).
 # Same algorithm, two implementations. Observed worst relative difference on TREE_GRID: 8.4e-12,
 # the same at N = 101 and N = 401, so it comes from how each library evaluates the step
 # parameters, not from rounding accumulated over steps. 1e-10 leaves 12x margin; any algorithmic
 # difference (probability convention, an off-by-one step) shows up at 1e-9 or more.
 TREE_ORACLE_RTOL = 1e-10
-
-
-def _quantlib_crr_probability(T: float, r: float, q: float, sigma: float, n: int) -> float:
-    # QuantLib's CoxRossRubinstein tree: pu = 1/2 + (1/2) (r - q - sigma^2/2) dt / (sigma sqrt(dt)).
-    return 0.5 + 0.5 * (r - q - 0.5 * sigma**2) * math.sqrt(T / n) / sigma
 
 
 def test_leisen_reimer_matches_quantlib_lr() -> None:
@@ -185,11 +170,7 @@ def test_tree_engine_reproduces_quantlib_crr_given_its_probability() -> None:
         theirs = quantlib_tree(
             option_type, **market, days=days, n_steps=n, tree="crr", exercise=exercise
         )
-        lattice = bt._crr_lattice(option_type, S, 100.0, T, r, q, sigma, n, False)
-        lattice = dataclasses.replace(lattice, p=_quantlib_crr_probability(T, r, q, sigma, n))
-        ours, _ = bt._roll_back(
-            lattice, bt._payoff(lattice, bt._spots(lattice, n)), n, exercise, False
-        )
+        ours = crr_with_quantlib_probability(option_type, market, T, n, exercise)
         if abs(ours / theirs - 1) > TREE_ORACLE_RTOL:
             failures.append((S, days, r, q, sigma, n, option_type, exercise, ours, theirs))
         own_crr = bt.crr(option_type, **market, T=T, n_steps=n, exercise=exercise).value

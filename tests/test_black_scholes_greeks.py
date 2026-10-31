@@ -1,18 +1,16 @@
 """Analytic BSM Greeks (SPEC 3.3, 3.4): agreement with finite differences, which also pins the
 units of SPEC 2.2, call-put identities, sanity anchors, and the boundary policy."""
 
-import itertools
 import math
-from collections.abc import Callable
 from typing import Any
 
 import numpy as np
 import pytest
+from experiments.validation import GREEK_GRID, greek_finite_difference
 
 from pricing import black_scholes as bs
 from pricing.contracts import OptionType
 from pricing.errors import UndefinedGreekError
-from pricing.finite_diff import central_first, relative_step
 
 CALL, PUT = OptionType.CALL, OptionType.PUT
 EPS = float(np.finfo(np.float64).eps)
@@ -29,16 +27,16 @@ GREEKS = {
 R1: dict[str, Any] = {"S": 42.0, "K": 40.0, "T": 0.5, "r": 0.10, "q": 0.0, "sigma": 0.20}
 
 # Finite-difference check (SPEC 7 as a test tool), with steps near the predicted optimum
-# eta ~ eps^(1/3). On this grid the predicted error, truncation h^2 V'''/6 plus rounding
-# eps V / h, is ~1e-8 relative (worst observed: vega, 5e-8), so 1e-6 leaves 20x margin while any
-# formula error (wrong sign, factor or exponent) shows up at 1e-3 or more. GREEK_FLOOR keeps the
+# eta ~ eps^(1/3) (FD_ETA = 1e-5 in experiments/validation.py). On this grid the predicted
+# error, truncation h^2 V'''/6 plus rounding eps V / h, is ~1e-8 relative (worst observed:
+# vega, 5e-8), so 1e-6 leaves 20x margin while any formula error (wrong sign, factor or
+# exponent) shows up at 1e-3 or more. GREEK_FLOOR keeps the
 # tolerance absolute (1e-9) for Greeks smaller than 1e-3.
 #
 # Gamma is checked as the S-derivative of analytic delta (itself checked against prices), not as
 # a second difference of prices. That second difference has error h^2 gamma''/12 + 4 eps V / h^2;
 # at S = 120, T = 0.25 the price (21) dwarfs gamma (0.0014), and even the best step reaches only
 # ~6e-7 relative. A first version used it and failed there (docs/notes/phase_1_bsm.md).
-ETA_FIRST = 1e-5
 FD_RTOL = 1e-6
 GREEK_FLOOR = 1e-3
 
@@ -51,33 +49,8 @@ VEGA_GAMMA_RTOL = 16 * EPS
 # Boundary Greeks: a few roundings of exp and products; 8 ulps covers them.
 BOUNDARY_RTOL = 8 * EPS
 
-# Interior grid: smooth points only, |r - q| and maturities spanning the SPEC 9.2 ranges.
-INTERIOR = [
-    {"S": S, "K": 100.0, "T": T, "r": r, "q": q, "sigma": sigma}
-    for S, T, r, q, sigma in itertools.product(
-        (80.0, 100.0, 120.0), (0.25, 1.0, 3.0), (-0.01, 0.05), (0.0, 0.03), (0.15, 0.4)
-    )
-]
-
-
-def _bump(
-    option_type: OptionType, case: dict[str, float], name: str, fn: Callable[..., Any] = bs.price
-) -> Callable[[float], float]:
-    """fn (default: price) as a function of one input, the others fixed."""
-    return lambda x: float(fn(option_type, **{**case, name: x}))
-
-
-def _finite_difference(greek: str, option_type: OptionType, case: dict[str, float]) -> float:
-    def first(name: str) -> float:
-        h = relative_step(case[name], eta=ETA_FIRST, x_scale=1.0)
-        return central_first(_bump(option_type, case, name), case[name], h)
-
-    if greek == "gamma":
-        h = relative_step(case["S"], eta=ETA_FIRST, x_scale=1.0)
-        return central_first(_bump(option_type, case, "S", bs.delta), case["S"], h)
-    if greek == "theta":
-        return -first("T")  # SPEC 7: theta = -dV/dT
-    return first({"delta": "S", "vega": "sigma", "rho": "r", "phi": "q"}[greek])
+# Interior grid and finite-difference routine: shared with the validation summary.
+INTERIOR = GREEK_GRID
 
 
 @pytest.mark.parametrize("option_type", [CALL, PUT])
@@ -88,7 +61,7 @@ def test_analytic_greek_matches_finite_difference(option_type: OptionType, greek
     failures = []
     for case in INTERIOR:
         analytic = float(GREEKS[greek](option_type, **case))
-        fd = _finite_difference(greek, option_type, case)
+        fd = greek_finite_difference(greek, option_type, case)
         if abs(analytic - fd) > FD_RTOL * max(abs(analytic), GREEK_FLOOR):
             failures.append((case, analytic, fd))
     assert not failures, failures

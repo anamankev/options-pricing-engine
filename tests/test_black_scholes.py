@@ -1,15 +1,15 @@
 """BSM prices (SPEC 3.1 to 3.5, 2.3): return types, spot form, a 50-digit reference, the boundary
 policy, small-volatility continuity and extreme moneyness."""
 
-import itertools
 import math
 from typing import Any
 
 import numpy as np
 import pytest
+from experiments.mp_reference import mp_price_and_error_scale
+from experiments.validation import GRID_K, GRID_Q, GRID_R, GRID_S, GRID_SIGMA, GRID_T, MPMATH_GRID
 from scipy.special import ndtr
 
-from mp_reference import mp_price_and_error_scale
 from pricing import black_scholes as bs
 from pricing.contracts import OptionType
 from pricing.errors import PricingInputError
@@ -38,21 +38,8 @@ VECTOR_SCALAR_RTOL = 8 * EPS
 # Boundary formulas are a few roundings of exp, a product and a max: 4 ulps covers them.
 BOUNDARY_RTOL = 4 * EPS
 
-# A grid spanning moneyness, maturity, volatility and signed r and q (SPEC 9.2), with total
-# volatility s >= 0.03 so every price is well away from underflow.
-GRID_S = (70.0, 95.0, 100.0, 130.0)
-GRID_T = (0.1, 1.0, 5.0)
-GRID_R = (-0.01, 0.05)
-GRID_Q = (-0.02, 0.03)
-GRID_SIGMA = (0.1, 0.4, 1.0)
-GRID_K = 100.0
-
-
-def _grid_cases() -> list[dict[str, float]]:
-    return [
-        {"S": S, "K": GRID_K, "T": T, "r": r, "q": q, "sigma": sigma}
-        for S, T, r, q, sigma in itertools.product(GRID_S, GRID_T, GRID_R, GRID_Q, GRID_SIGMA)
-    ]
+# The 50-digit comparison grid is shared with the validation summary, so the README's
+# measured worst error and this test always describe the same 288 cases.
 
 
 # --- SPEC 2.3: types and broadcasting ---------------------------------------------------------
@@ -125,10 +112,10 @@ def test_forward_form_matches_spot_form(option_type: OptionType) -> None:
 
 @pytest.mark.parametrize("option_type", [CALL, PUT])
 def test_matches_50_digit_reference_within_rounding_budget(option_type: OptionType) -> None:
-    # Expected values: computed by mpmath at 50 significant digits (tests/mp_reference.py).
+    # Expected values: computed by mpmath at 50 significant digits (experiments/mp_reference.py).
     th = 1 if option_type is CALL else -1
     failures = []
-    for case in _grid_cases():
+    for case in MPMATH_GRID:
         exact, scale = mp_price_and_error_scale(th, **case)
         error = abs(bs.price(option_type, **case) - exact)
         if error > ROUNDING_FACTOR * EPS * scale:

@@ -1,12 +1,11 @@
 """Implied-volatility solvers (SPEC 6): feasibility, SPEC 6.4 round trips, failure reporting."""
 
 import dataclasses
-import itertools
 import math
 from typing import Any
 
-import numpy as np
 import pytest
+from experiments.validation import IV_GRID, IV_Q, IV_R, IV_STRIKE, iv_market
 from scipy.special import ndtr
 
 from pricing import black_scholes as bs
@@ -17,7 +16,7 @@ from pricing.implied_vol import IVMethod, IVReason
 
 CALL, PUT = OptionType.CALL, OptionType.PUT
 EPS = iv.EPS
-R, Q, STRIKE = 0.03, 0.01, 100.0
+R, Q, STRIKE = IV_R, IV_Q, IV_STRIKE  # shared with experiments/validation.py
 
 # Accuracy model. The target price carries rounding error up to ~eps x scale (Phase 1 model:
 # scale = F N(td1) + K N(td2) + F phi(d1)(1 + |d1| + |d2|), observed <= 0.76 eps x scale), and the
@@ -27,10 +26,7 @@ R, Q, STRIKE = 0.03, 0.01, 100.0
 IV_ROUNDING_FACTOR = 32
 
 
-def _market(x: float, T: float) -> dict[str, float]:
-    """Market with log-moneyness x = ln(F / K) for K = 100."""
-    F = STRIKE * math.exp(x)
-    return {"S": F * math.exp(-(R - Q) * T), "K": STRIKE, "T": T, "r": R, "q": Q}
+_market = iv_market
 
 
 def _allowed_error(option_type: OptionType, x: float, s: float, method: IVMethod) -> float:
@@ -46,15 +42,9 @@ def _allowed_error(option_type: OptionType, x: float, s: float, method: IVMethod
     return allowed
 
 
-# SPEC 6.4 grid: x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 5}, sigma in {0.01, 0.2, 1, 3}.
-ROUND_TRIP = list(
-    itertools.product(
-        np.arange(-3.0, 3.01, 0.5),
-        (1 / 365, 7 / 365, 0.25, 1.0, 5.0),
-        (0.01, 0.2, 1.0, 3.0),
-        (CALL, PUT),
-    )
-)
+# SPEC 6.4 grid (x in [-3, 3], T in {1/365, 7/365, 0.25, 1, 5}, sigma in {0.01, 0.2, 1, 3}),
+# shared with the validation summary.
+ROUND_TRIP = IV_GRID
 
 
 def _check_round_trip(method: IVMethod) -> dict[IVReason, int]:

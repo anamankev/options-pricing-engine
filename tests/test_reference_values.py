@@ -7,6 +7,7 @@ each tolerance is that half unit. Tighter claims come from the QuantLib and mpma
 from typing import Any
 
 import pytest
+from experiments.validation import JUZHONG_BBSR_STEPS, JUZHONG_CASES, JUZHONG_LR_STEPS
 
 from pricing import binomial as bt
 from pricing import black_scholes as bs
@@ -51,46 +52,7 @@ def test_r3_haug_call() -> None:
 JUZHONG_ABS_TOL = 2e-3
 
 
-def _r4(K: float, T: float, sigma: float, value: float, tag: str = "R4") -> tuple[Any, ...]:
-    # Exhibit 3: American puts, S = 40, r = 0.0488, q = 0.
-    case = {"S": 40.0, "K": K, "T": T, "r": 0.0488, "q": 0.0, "sigma": sigma}
-    return (tag, OptionType.PUT, case, value)
-
-
-def _r5(S: float, sigma: float, r: float, q: float, value: float) -> tuple[Any, ...]:
-    # Exhibit 4: American calls, K = 100, T = 0.5.
-    case = {"S": S, "K": 100.0, "T": 0.5, "r": r, "q": q, "sigma": sigma}
-    return ("R5", OptionType.CALL, case, value)
-
-
-def _r6(S: float, value: float) -> tuple[Any, ...]:
-    # Exhibit 5: American puts, K = 100, T = 3, sigma = 0.2, r = 0.08, q = 0.12.
-    case = {"S": S, "K": 100.0, "T": 3.0, "r": 0.08, "q": 0.12, "sigma": 0.2}
-    return ("R6", OptionType.PUT, case, value)
-
-
-JUZHONG_CASES = [
-    # R4, R5, R6: verified from the primary PDF (SPEC 9.1).
-    _r4(35.0, 0.0833, 0.2, 0.006),
-    _r4(40.0, 0.3333, 0.2, 1.580),
-    _r4(40.0, 0.5833, 0.2, 1.990),
-    _r4(45.0, 0.5833, 0.2, 5.267),
-    _r4(45.0, 0.3333, 0.3, 5.706),
-    _r4(40.0, 0.5833, 0.4, 4.353),
-    _r4(45.0, 0.5833, 0.4, 7.383),
-    # R4b: printed value not yet checked in the paper (SPEC 17).
-    _r4(40.0, 0.0833, 0.2, 0.852, tag="R4b"),
-    _r5(100.0, 0.2, 0.03, 0.07, 4.783),
-    _r5(110.0, 0.2, 0.03, 0.07, 11.098),
-    _r5(100.0, 0.4, 0.03, 0.07, 10.239),
-    _r5(100.0, 0.3, 0.00, 0.07, 7.035),
-    _r5(100.0, 0.3, 0.07, 0.03, 9.250),
-    _r6(80.0, 25.658),
-    _r6(90.0, 20.083),
-    _r6(100.0, 15.498),
-    _r6(110.0, 11.803),
-    _r6(120.0, 8.886),
-]
+# Cases R4 to R6 are shared with the validation summary (experiments/validation.py).
 
 
 @pytest.mark.parametrize(
@@ -101,7 +63,9 @@ JUZHONG_CASES = [
 def test_ju_zhong_american_values(
     tag: str, option_type: OptionType, case: dict[str, float], published: float
 ) -> None:
-    lr = bt.leisen_reimer(option_type, **case, n_steps=2001, exercise=ExerciseStyle.AMERICAN)
-    bbsr = bt.bbsr(option_type, **case, n_steps=2048, exercise=ExerciseStyle.AMERICAN)
+    lr = bt.leisen_reimer(
+        option_type, **case, n_steps=JUZHONG_LR_STEPS, exercise=ExerciseStyle.AMERICAN
+    )
+    bbsr = bt.bbsr(option_type, **case, n_steps=JUZHONG_BBSR_STEPS, exercise=ExerciseStyle.AMERICAN)
     assert lr.value == pytest.approx(published, abs=JUZHONG_ABS_TOL)
     assert bbsr.value == pytest.approx(published, abs=JUZHONG_ABS_TOL)

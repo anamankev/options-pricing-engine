@@ -1,0 +1,9 @@
+# Validation summary: the measured values behind the README's Validation section.
+# Grids and cases are defined in experiments/validation.py and shared with the tests.
+
+[bump_study]  # refined-optimum comparison reads the bump study's own config and results
+config = "experiments/configs/greek_bumps.toml"
+summary = "experiments/results/tables/greek_bumps_summary.json"
+
+[output]
+summary_json = "experiments/results/tables/validation_summary.json"
