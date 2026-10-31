@@ -88,3 +88,20 @@ For comparison, after the fix:
 ## 8. Next questions
 - Replace the extra-digit path with Jaeckel's (2015) normalized Black function and its expansions, once their equations are checked against the paper (SPEC 17), to recover LBR-like speed.
 - Confirm on grids with extreme F/K scaling.
+
+## 9. Follow-up: time-value cutoff 0 (registered before the change or any run)
+Section 6 concluded, after seeing H2 fail, that the in-the-money cutoff should be 0: solve whenever c exceeds the intrinsic value. This section registers a test of that change on a third grid that no code has yet been run on.
+
+**Change.** In `pricing.implied_vol.solve_black`, an in-the-money price is at the lower bound (s = 0) only when its time value c - iota is at most 0. Prices up to 8 eps max(F, K) below iota stay at the lower bound, and prices further below remain infeasible (SPEC 6.2). Everything else is unchanged.
+
+**Hypotheses.** These are judged on the confirmation grid only. "Informative" and e_norm are as above.
+- F1 (H2 again): at every informative point where LBR converges, SN converges too.
+- F2 (no accuracy lost): over informative points, SN's e_norm has median <= 2 and 99th percentile <= 20.
+- F3 (near money still fixed): on informative points with |x| <= 0.5 and s <= 1e-2, SN's median e_norm is at most 4.
+- F4 (robustness): at informative points, neither SN nor Brent returns MAX_ITERATIONS, BRACKET_FAILURE or INFEASIBLE.
+
+**Design.**
+- Confirmation grid: F = 2, T = 2.5, x from -5.95 to 5.95 in steps of 0.35 (35 values), s log-spaced from 1.7e-4 to 3.1 (53 values), calls and puts: 3710 problems. Because the Black price scales with F, only (x, s) and the rounding at this F differ from the earlier grids; none of these (x, s) pairs occurs on grid A or the new grid.
+- Grids A and new are rerun with the change too. Those numbers are post hoc, since the change was designed from them, and are reported as such.
+- Same code path, solvers, truth and metrics as sections 1 to 3. Script `experiments/study_a2_iv.py` (extended to evaluate each grid separately); config `experiments/configs/study_a2_followup.toml`.
+- Also reported, not tested: what SN now returns at uninformative in-the-money points that previously gave s = 0.
