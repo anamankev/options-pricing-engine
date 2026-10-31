@@ -21,6 +21,7 @@ MODULES = (
     "experiments.validation",
     "experiments.mp_reference",
     "verify.ledger",
+    "verify.checks",
 )
 BLOCKED = ("QuantLib", "lets_be_rational", "py_lets_be_rational", "vollib")
 
