@@ -59,7 +59,6 @@ Diagnoses and decisions:
 ## 7. Limitations and threats to validity
 - Trees are scalar and pure Python plus NumPy per layer: O(N^2) time. N = 16384 takes about 0.75 s per BBSR price.
 - Ju-Zhong comparisons use printed maturities (0.0833 rather than 1/12). Measured effect at most 1.6e-4, inside the 2e-3 tolerance.
-- The Windows branch of the hook is still untested.
 - Citations whose numbering is not yet checked against the source are listed in SPEC 17.
 
 ## 8. Next questions

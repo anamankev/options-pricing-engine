@@ -23,7 +23,7 @@ Does the library price European options and their Greeks under BSM correctly, to
   | Reference values R1 to R3 | 4 | `test_reference_values.py` |
   | Properties | 9 | `test_properties.py` |
   | Oracle (QuantLib) and metric definitions | 10 | `test_oracles.py`, `test_reconciliation_metrics.py` |
-  | Phase 0 package and hook | 17 | `test_package.py`, `test_hooks.py` |
+  | Phase 0 package and local tooling | 17 | `test_package.py` (2); 15 tooling tests kept outside the repository |
 
 - Rounding model behind every price tolerance: absolute error <= 64 eps x scale, with scale = D F N(theta d1) + D K N(theta d2) + D F phi(d1) (1 + |d1| + |d2|).
 

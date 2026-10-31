@@ -323,7 +323,7 @@ In Phase 0, set up a local editor check that runs `ruff check` on each changed P
 
 | Phase | Weeks | Read | Required deliverables | Exit gate |
 |---|---|---|---|---|
-| 0 Environment | 1 | §2.3, §9.2, §13 | Public repo, venv, pyproject, Ruff, mypy, pytest markers, CI, hook, README skeleton | Fresh clone reproduces all checks from README commands; hook demonstrated; no machine-specific paths |
+| 0 Environment | 1 | §2.3, §9.2, §13 | Public repo, venv, pyproject, Ruff, mypy, pytest markers, CI, local post-edit check, README skeleton | Fresh clone reproduces all checks from README commands; no machine-specific paths |
 | 1 BSM reference engine | 2 to 4 | §2, §3, §7 (as test tool), §8.1, §9 | §3 complete; errors.py; R1 to R3 per status; identities, bounds, monotonicity, property tests; QuantLib European reconciliation | All required tests pass; reconciliation report committed |
 | 2 Numerical methods | 5 to 8 | §4, §5, §8.1, §9.1 R4 to R6 | CRR, LR, BBS, BBSR, American exercise; MC with antithetic and control variates; coverage experiment; Ju-Zhong reproduction | Cross-method tests pass; coverage note committed; R4 to R6 reproduced within tolerance |
 | 3 IV and FD Greeks | 9 to 10 | §6, §7, §8.2 | Solvers with diagnostics; LBR oracle wired; bump study | §6.4 tests pass; bump-study note explains observed vs predicted optimal eta |

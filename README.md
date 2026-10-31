@@ -15,7 +15,7 @@ The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). E
 ## Status
 
 Version 1.0: all seven phases of SPEC §14 are complete.
-- 367 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 352 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
 - Six experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 
@@ -219,7 +219,6 @@ Performance:
 
 Validation:
 - Most experiments ran on macOS arm64. CI repeats the tests on Linux.
-- The development hook's Windows branch is untested.
 - Some citations' page or equation numbers are not yet checked against the books (SPEC §17).
 - Three reference values (R2, R3, R4b) are reproduced numerically but not yet checked against the printed primary source, and R1's Hull edition and page are unrecorded (SPEC §9.1).
 - Analyses added after seeing data are labelled post hoc in their notes and are exploratory, for example:
@@ -253,12 +252,11 @@ docs/notes/       research notes (template: TEMPLATE.md)
 
 ## How it was built
 
-The project was built in the phases of SPEC §14, under four working rules:
+The project was built in the seven phases of SPEC §14, under four working rules:
 - plan before each phase;
 - one commit per unit;
 - register hypotheses before running experiments;
 - never loosen a tolerance without a diagnosis.
-
 
 ## License
 
