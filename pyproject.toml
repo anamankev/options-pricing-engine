@@ -35,6 +35,10 @@ oracle = [
     # vollib is the current name of py_vollib, now a shim that warns on import (SPEC 8.2).
     "vollib>=1.0.11,<2",
 ]
+# The local playground (app/playground.py): `streamlit run app/playground.py`.
+app = [
+    "streamlit>=1.60,<2",
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "pricing.__version__" }

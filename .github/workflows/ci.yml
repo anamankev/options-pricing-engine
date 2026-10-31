@@ -48,6 +48,6 @@ jobs:
           cache: pip
           cache-dependency-path: pyproject.toml
       - run: python -m pip install --upgrade pip
-      - run: pip install -e ".[dev,oracle]"
+      - run: pip install -e ".[dev,oracle,app]"
       - run: pip list
       - run: pytest -q
