@@ -15,7 +15,7 @@ The technical standard the code is built to is [`docs/SPEC.md`](docs/SPEC.md). E
 ## Status
 
 All seven phases of SPEC §14 are complete.
-- 454 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
+- 455 tests: deterministic, statistical, and oracle tests against QuantLib, Let's Be Rational and vollib.
 - CI on Python 3.11 and 3.12.
 - 8 experiments, each reproducible from one command (see [Reproducing the results](#reproducing-the-results)).
 - Every number in this README is checked against the result file it comes from (`docs/claims.toml`), so a stale or mistyped number fails the tests.
@@ -32,7 +32,7 @@ All seven phases of SPEC §14 are complete.
 R1 (European) and the 18 Ju and Zhong (1999) American cases, against QuantLib's QdFp engine at a validated strict setting:
 - CRR is first order and oscillates between odd and even N; Richardson extrapolation on it helps only 32% of the time.
 - Leisen-Reimer is second order for European options (slope -1.995) but first order for American puts (median -1.00).
-- BBSR has the smallest error at a given runtime in 85% of comparisons on American puts (median order -1.24), although its error changes sign as N doubles.
+- BBSR has the smallest error at a given runtime in 85% of comparisons on American puts (median order -1.24), although its error changes sign as N doubles. This ranking uses measured runtimes, so it depends on the machine and its load.
 
 ### Validation
 - **Exact values:** prices agree with a 50-digit mpmath evaluation on 288 cases. The worst error is 0.76 eps times the formula's error scale, against a budget of 64.

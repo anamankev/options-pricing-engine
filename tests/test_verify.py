@@ -72,3 +72,11 @@ def test_quick_rechecks_pass_on_the_committed_code() -> None:
     for check in checks.QUICK_CHECKS:
         result = check()
         assert result.status in (PASS, SKIP), (result.name, result.measured, result.detail)
+
+
+def test_study_b_runtime_ranking_is_not_compared() -> None:
+    # B4 ranks methods by error at a fixed runtime budget, so it can change with machine load.
+    old = {"verdicts": {"B1a": True, "B4": True}, "stats": {"B4_bbsr_share": 0.85}}
+    new = {"verdicts": {"B1a": True, "B4": False}, "stats": {"B4_bbsr_share": 0.70}}
+    assert cli.compare_summaries("study_b_trees", old, new) == []
+    assert "B4" in cli.NOT_COMPARED["study_b_trees"]

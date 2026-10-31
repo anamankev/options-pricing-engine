@@ -1,8 +1,8 @@
 """Check that everything this project claims is true, on this machine, with one command.
 
     python -m verify            # about half a minute: tests, README numbers, quick rechecks
-    python -m verify --full     # also reruns every experiment and compares with the committed
-                                # results (about 3 minutes with the oracle extra installed)
+    python -m verify --full     # also reruns every experiment at the commit that produced its
+                                # committed results and compares (about 3 minutes with QuantLib)
     python -m verify --report verification.md   # also save the report as Markdown
 
 Each line says what was checked, what was measured, the limit it was held to, and PASS, FAIL or
@@ -13,9 +13,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -34,12 +37,23 @@ EXPERIMENTS = (
     ("quantlib_reconciliation", "quantlib_reconciliation_summary.json", True),
     ("study_a_iv", "study_a_iv_summary.json", True),
     ("study_b_trees", "study_b_summary.json", True),
+    ("study_a2_iv", "study_a2_summary.json", True),
 )
 # Never compared: provenance, and anything measured in seconds, which depends on the machine and
 # its load. Benchmarks are compared on their verdicts only. Study B's B4 ranks methods by error at
 # a fixed runtime budget, so it is timing-dependent too.
 NEVER_COMPARED = ("environment", "config")
-TIMING_WORDS = ("time", "timing", "b4_pairs", "B4_")
+TIMING_WORDS = ("time", "timing", "b4_pairs", "B4_", "verdicts.B4")
+# Said in the report, so a reader knows what was left out and why.
+NOT_COMPARED = {
+    "benchmarks": "Only the verdicts are compared: times depend on the machine and its load.",
+    "study_b_trees": (
+        "Not compared: timings, and B4 (error at a fixed runtime budget), which ranks methods "
+        "by measured time and can change with machine load."
+    ),
+    "study_a_iv": "Not compared: timings.",
+    "study_a2_iv": "Not compared: timings.",
+}
 COMPARE_ONLY = {"benchmarks": ("verdicts",)}
 RELATIVE_TOLERANCE = 1e-9  # same code, same inputs: differences beyond rounding are real changes
 
@@ -92,22 +106,32 @@ def compare_summaries(
 
 
 def rerun_experiments() -> list[Result]:
-    """Run every README reproduction command, compare with the committed results, then restore
-    the committed files so the working copy is left as it was."""
-    if _git("status", "--porcelain", "--", RESULTS):
-        return [
-            Result(
-                "Rerun every experiment",
-                FAIL,
-                "",
-                "",
-                f"{RESULTS} has uncommitted changes; commit or discard them first",
-            )
-        ]
+    """Rerun every README reproduction command at the commit recorded in its committed results,
+    and compare the regenerated summary with the committed one.
+
+    Each committed summary records the commit that produced it (provenance). Rerunning at that
+    commit, in a temporary git worktree, shows the committed numbers are exactly what that code
+    produces. Today's code is checked by the tests and the quick rechecks above. Nothing in this
+    working copy is modified."""
     results = []
+    worktrees: dict[str, Path] = {}
+    scratch = Path(tempfile.mkdtemp(prefix="verify-"))
     try:
         for experiment, summary, needs_oracle in EXPERIMENTS:
-            name = f"Rerun {experiment}"
+            path = f"{RESULTS}/tables/{summary}"
+            committed = json.loads((ROOT / path).read_text())
+            commit = committed["environment"]["commit"]
+            name = f"Rerun {experiment} at commit {commit[:7]}"
+            if needs_oracle and not oracle_available():
+                results.append(Result(name, SKIP, "", "", ORACLE_HINT))
+                continue
+            if committed["environment"].get("dirty"):
+                results.append(Result(name, FAIL, "", "", "recorded from uncommitted code"))
+                continue
+            if commit not in worktrees:
+                worktrees[commit] = scratch / commit[:12]
+                _git("worktree", "add", "--detach", str(worktrees[commit]), commit)
+            tree = worktrees[commit]
             command = [
                 sys.executable,
                 "-m",
@@ -115,26 +139,22 @@ def rerun_experiments() -> list[Result]:
                 "--config",
                 f"experiments/configs/{experiment}.toml",
             ]
-            if needs_oracle and not oracle_available():
-                results.append(Result(name, SKIP, "", "", ORACLE_HINT))
-                continue
-            print(f"  running {' '.join(command[1:])} ...", flush=True)
+            print(f"  {name} ...", flush=True)
+            env = {**os.environ, "PYTHONPATH": f"{tree / 'src'}{os.pathsep}{tree}"}
             start = time.perf_counter()
-            proc = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
+            proc = subprocess.run(command, capture_output=True, text=True, cwd=tree, env=env)
             seconds = time.perf_counter() - start
             if proc.returncode != 0:
                 results.append(
                     Result(name, FAIL, "command failed", "", proc.stderr[-2000:], seconds)
                 )
                 continue
-            path = f"{RESULTS}/tables/{summary}"
-            committed = json.loads(_git("show", f"HEAD:{path}"))
-            fresh = json.loads((ROOT / path).read_text())
+            fresh = json.loads((tree / path).read_text())
             if experiment == "validation" and not oracle_available():
                 fresh["trees_vs_quantlib"] = committed["trees_vs_quantlib"]  # skipped, see above
             differences = compare_summaries(experiment, committed, fresh)
             measured = (
-                "matches the committed results"
+                "reproduces the committed results"
                 if not differences
                 else f"{len(differences)} values differ"
             )
@@ -143,13 +163,15 @@ def rerun_experiments() -> list[Result]:
                     name,
                     PASS if not differences else FAIL,
                     measured,
-                    f"relative {RELATIVE_TOLERANCE:.0e}; timings not compared",
-                    "\n".join(differences[:10]),
+                    f"relative {RELATIVE_TOLERANCE:.0e}",
+                    "\n".join([*differences[:10], NOT_COMPARED.get(experiment, "")]).strip(),
                     seconds,
                 )
             )
     finally:
-        _git("checkout", "--", RESULTS)  # put the committed results back
+        for tree in worktrees.values():
+            _git("worktree", "remove", "--force", str(tree))
+        shutil.rmtree(scratch, ignore_errors=True)
     return results
 
 
