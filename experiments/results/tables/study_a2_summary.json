@@ -1,0 +1,490 @@
+{
+  "config": {
+    "option_types": [
+      "CALL",
+      "PUT"
+    ],
+    "mp_digits": 50,
+    "methods": [
+      "brent",
+      "naive_newton",
+      "safeguarded_newton",
+      "lets_be_rational"
+    ],
+    "before_table": "experiments/results/tables/study_a_iv.csv",
+    "timing": {
+      "repeats": 5
+    },
+    "grids": [
+      {
+        "name": "grid_a",
+        "F": 100.0,
+        "T": 1.0,
+        "x": {
+          "start": -6.0,
+          "stop": 6.0,
+          "step": 0.25
+        },
+        "s": {
+          "low": 0.0001,
+          "high": 4.0,
+          "count": 60
+        }
+      },
+      {
+        "name": "new_grid",
+        "F": 37.5,
+        "T": 0.4,
+        "x": {
+          "start": -5.875,
+          "stop": 5.875,
+          "step": 0.25
+        },
+        "s": {
+          "low": 0.00013,
+          "high": 3.7,
+          "count": 57
+        }
+      }
+    ],
+    "checks": {
+      "h1_region": {
+        "abs_x_max": 0.5,
+        "s_max": 0.01
+      },
+      "h1_max_median_enorm": 4.0,
+      "h3_max_median_enorm": 2.0,
+      "h3_max_p99_enorm": 20.0,
+      "h4_bad_outcomes": [
+        "MAX_ITERATIONS",
+        "BRACKET_FAILURE",
+        "INFEASIBLE"
+      ],
+      "h5_max_p99_enorm_lbr": 20.0,
+      "h6_max_median_iterations": 12
+    },
+    "output": {
+      "table_csv_pattern": "experiments/results/tables/study_a2_{grid}.csv",
+      "summary_json": "experiments/results/tables/study_a2_summary.json",
+      "figure_dir": "experiments/results/figures"
+    }
+  },
+  "environment": {
+    "commit": "ba1d3c611999a24155a298e5cbef6ca3ed28303b",
+    "dirty": false,
+    "python": "3.12.15",
+    "platform": "macOS-26.6-arm64-arm-64bit",
+    "machine": "arm64",
+    "libraries": {
+      "numpy": "2.5.4",
+      "scipy": "1.18.1",
+      "mpmath": "1.4.1",
+      "matplotlib": "3.11.2",
+      "lets-be-rational": "1.1.2"
+    },
+    "timestamp_utc": "2026-10-31T01:31:15+00:00"
+  },
+  "grids": {
+    "grid_a": {
+      "n_points": 5880,
+      "n_informative": 1954,
+      "h1_n": 56,
+      "h1_sn_median_enorm": 0.0,
+      "h1_lbr_median_enorm": 0.0,
+      "h2_lbr_converged": 1940,
+      "h2_sn_missed": [
+        {
+          "option_type": "CALL",
+          "x": 1.0,
+          "s": 0.13183802003210707,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 2.5,
+          "s": 0.32362775168232105,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 3.0,
+          "s": 0.3872993542667293,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 3.5,
+          "s": 0.4634979201742532,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 4.25,
+          "s": 0.5546880459240493,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 5.0,
+          "s": 0.663819220969466,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -6.0,
+          "s": 0.7944212271501622,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -5.0,
+          "s": 0.663819220969466,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -4.25,
+          "s": 0.5546880459240493,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -3.5,
+          "s": 0.4634979201742532,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -1.75,
+          "s": 0.22596632498281508,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -1.0,
+          "s": 0.13183802003210707,
+          "sn_outcome": "AT_LOWER_BOUND"
+        }
+      ],
+      "h4_bad": {
+        "brent": 0,
+        "safeguarded_newton": 0
+      },
+      "per_method": {
+        "brent": {
+          "outcomes_informative": {
+            "CONVERGED": 1928,
+            "AT_LOWER_BOUND": 26
+          },
+          "e_norm_median": 0.15877053864062055,
+          "e_norm_p99": 23.708981398760077,
+          "iterations_median": 12.0,
+          "time_median_us": 366.2915
+        },
+        "naive_newton": {
+          "outcomes_informative": {
+            "CONVERGED": 400,
+            "ZERO_DERIVATIVE": 1280,
+            "MAX_ITERATIONS": 152,
+            "DIVERGED": 96,
+            "AT_LOWER_BOUND": 26
+          },
+          "e_norm_median": 0.0,
+          "e_norm_p99": 44.69434125765832,
+          "iterations_median": 1.0,
+          "time_median_us": 61.5205
+        },
+        "safeguarded_newton": {
+          "outcomes_informative": {
+            "CONVERGED": 1928,
+            "AT_LOWER_BOUND": 26
+          },
+          "e_norm_median": 0.0178635335356447,
+          "e_norm_p99": 4.971512883963315,
+          "iterations_median": 8.0,
+          "time_median_us": 219.60399999999998
+        },
+        "lets_be_rational": {
+          "outcomes_informative": {
+            "CONVERGED": 1940,
+            "AT_LOWER_BOUND": 14
+          },
+          "e_norm_median": 0.15874594732135638,
+          "e_norm_p99": 1.9891382170074872,
+          "iterations_median": 2.0,
+          "time_median_us": 6.9375
+        }
+      }
+    },
+    "new_grid": {
+      "n_points": 5472,
+      "n_informative": 1807,
+      "h1_n": 12,
+      "h1_sn_median_enorm": 0.0,
+      "h1_lbr_median_enorm": 1.6249371564974733,
+      "h2_lbr_converged": 1797,
+      "h2_sn_missed": [
+        {
+          "option_type": "CALL",
+          "x": 0.875,
+          "s": 0.11400804297821497,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 1.875,
+          "s": 0.2371902337329471,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 3.125,
+          "s": 0.41088263505567885,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "CALL",
+          "x": 3.875,
+          "s": 0.4934670002978678,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -5.375,
+          "s": 0.7117685122751631,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -3.125,
+          "s": 0.41088263505567885,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -2.625,
+          "s": 0.34211920896106907,
+          "sn_outcome": "AT_LOWER_BOUND"
+        },
+        {
+          "option_type": "PUT",
+          "x": -0.875,
+          "s": 0.11400804297821497,
+          "sn_outcome": "AT_LOWER_BOUND"
+        }
+      ],
+      "h4_bad": {
+        "brent": 0,
+        "safeguarded_newton": 0
+      },
+      "per_method": {
+        "brent": {
+          "outcomes_informative": {
+            "CONVERGED": 1789,
+            "AT_LOWER_BOUND": 18
+          },
+          "e_norm_median": 0.1779172155573136,
+          "e_norm_p99": 24.6761700267759,
+          "iterations_median": 12.0,
+          "time_median_us": 541.666
+        },
+        "naive_newton": {
+          "outcomes_informative": {
+            "ZERO_DERIVATIVE": 1359,
+            "DIVERGED": 86,
+            "MAX_ITERATIONS": 104,
+            "CONVERGED": 240,
+            "AT_LOWER_BOUND": 18
+          },
+          "e_norm_median": 0.0,
+          "e_norm_p99": 36.64996378749586,
+          "iterations_median": 1.0,
+          "time_median_us": 55.084
+        },
+        "safeguarded_newton": {
+          "outcomes_informative": {
+            "CONVERGED": 1789,
+            "AT_LOWER_BOUND": 18
+          },
+          "e_norm_median": 0.0,
+          "e_norm_p99": 3.4771089868681218,
+          "iterations_median": 9.0,
+          "time_median_us": 297.291
+        },
+        "lets_be_rational": {
+          "outcomes_informative": {
+            "CONVERGED": 1797,
+            "AT_LOWER_BOUND": 10
+          },
+          "e_norm_median": 0.20184169740141805,
+          "e_norm_p99": 2.735369548299601,
+          "iterations_median": 2.0,
+          "time_median_us": 6.958
+        }
+      }
+    }
+  },
+  "before_grid_a": {
+    "n_points": 5880,
+    "n_informative": 1954,
+    "h1_n": 56,
+    "h1_sn_median_enorm": 683.1049637999752,
+    "h1_lbr_median_enorm": 0.0,
+    "h2_lbr_converged": 1940,
+    "h2_sn_missed": [
+      {
+        "option_type": "CALL",
+        "x": "1.0",
+        "s": "0.13183802003210707",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "2.0",
+        "s": "0.2704236929525688",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "2.5",
+        "s": "0.32362775168232105",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "3.0",
+        "s": "0.3872993542667293",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "3.5",
+        "s": "0.4634979201742532",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "4.25",
+        "s": "0.5546880459240493",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "5.0",
+        "s": "0.663819220969466",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "CALL",
+        "x": "5.75",
+        "s": "0.7944212271501622",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-6.0",
+        "s": "0.7944212271501622",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-5.75",
+        "s": "0.7944212271501622",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-5.0",
+        "s": "0.663819220969466",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-4.25",
+        "s": "0.5546880459240493",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-3.5",
+        "s": "0.4634979201742532",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-2.0",
+        "s": "0.2704236929525688",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-1.75",
+        "s": "0.22596632498281508",
+        "sn_outcome": "AT_LOWER_BOUND"
+      },
+      {
+        "option_type": "PUT",
+        "x": "-1.0",
+        "s": "0.13183802003210707",
+        "sn_outcome": "AT_LOWER_BOUND"
+      }
+    ],
+    "h4_bad": {
+      "brent": 0,
+      "safeguarded_newton": 0
+    },
+    "per_method": {
+      "brent": {
+        "outcomes_informative": {
+          "CONVERGED": 1924,
+          "AT_LOWER_BOUND": 30
+        },
+        "e_norm_median": 0.6454955249623975,
+        "e_norm_p99": 640.4780433023482,
+        "iterations_median": 12.0,
+        "time_median_us": 9.9585
+      },
+      "naive_newton": {
+        "outcomes_informative": {
+          "MAX_ITERATIONS": 260,
+          "ZERO_DERIVATIVE": 1276,
+          "CONVERGED": 292,
+          "DIVERGED": 96,
+          "AT_LOWER_BOUND": 30
+        },
+        "e_norm_median": 1.3725290603475915,
+        "e_norm_p99": 268.5430880875249,
+        "iterations_median": 1.0,
+        "time_median_us": 2.417
+      },
+      "safeguarded_newton": {
+        "outcomes_informative": {
+          "CONVERGED": 1924,
+          "AT_LOWER_BOUND": 30
+        },
+        "e_norm_median": 0.8569846730396311,
+        "e_norm_p99": 1087.1225699392778,
+        "iterations_median": 9.0,
+        "time_median_us": 5.5
+      },
+      "lets_be_rational": {
+        "outcomes_informative": {
+          "CONVERGED": 1940,
+          "AT_LOWER_BOUND": 14
+        },
+        "e_norm_median": 0.15874594732135638,
+        "e_norm_p99": 1.9891382170074872,
+        "iterations_median": 2.0,
+        "time_median_us": 6.625
+      }
+    }
+  },
+  "verdicts": {
+    "H1": true,
+    "H2": false,
+    "H3": true,
+    "H4": true,
+    "H5": true,
+    "H6": true
+  }
+}

@@ -1,6 +1,6 @@
 # Study A2: do the solver fixes close Study A's gaps?
 
-Status: REGISTERED. Sections 1 to 3 were committed before the study code existed, and after the fixes they test (commit `0a1566d`). No A2 grid point has been solved before registration.
+Status: COMPLETE. Sections 1 to 3 registered at commit `030cea7`, after the fixes they test (`0a1566d`) and before the study code existed. Results from commit `ba1d3c6`.
 
 ## 1. Question
 Study A found two weaknesses in our safeguarded Newton solver:
@@ -38,3 +38,53 @@ Each hypothesis must hold on both grids (section 3):
   - Config: `experiments/configs/study_a2_iv.toml`.
   - Script: `experiments/study_a2_iv.py`.
 - **Randomness:** none.
+
+## 4. Results
+- Code: commit `ba1d3c6`, clean tree. Command: `python -m experiments.study_a2_iv --config experiments/configs/study_a2_iv.toml` (about 1 minute).
+- Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, mpmath 1.4.1, matplotlib 3.11.2, lets-be-rational 1.1.2.
+- Outputs:
+  - tables: `experiments/results/tables/study_a2_grid_a.csv`, `study_a2_new_grid.csv` and `study_a2_summary.json`;
+  - figures: `experiments/results/figures/study_a2_{grid_a,new_grid}_e_norm.png` and `_e_norm_3d.png`.
+
+  The figures come from Study A's plotting code, unchanged. Its caption calls the dashed informative boundary "post hoc"; in A2 that region was registered.
+
+Informative points: 1954 of 5880 on grid A (as in Study A), 1807 of 5472 on the new grid. Safeguarded Newton (SN) before (Study A's committed results) and after:
+
+| Statistic (informative points) | Grid A before | Grid A after | New grid |
+|---|---|---|---|
+| H1: SN median e_norm, \|x\| <= 0.5 and s <= 1e-2 | 683 (n = 56) | 0.0 (n = 56) | 0.0 (n = 12) |
+| H2: points LBR solves that SN does not | 16 of 1940 | 12 of 1940 | 8 of 1797 |
+| H3: SN e_norm median / p99 | 0.86 / 1087 | 0.018 / 4.97 | 0.0 / 3.48 |
+| H4: MAX_ITERATIONS, BRACKET_FAILURE or INFEASIBLE (Brent, SN) | 0, 0 | 0, 0 | 0, 0 |
+| H5: LBR e_norm p99 | 1.99 | 1.99 | 2.74 |
+| H6: SN median iterations | 9 | 8 | 9 |
+| SN median time per solve (reported, not tested) | 5.5 us | 220 us | 297 us |
+
+For comparison, after the fix:
+- Brent: e_norm median 0.16 / p99 23.7 on grid A, and 0.18 / 24.7 on the new grid.
+- LBR: median 0.16 / 0.20, with 2 iterations and 7 us per solve.
+
+## 5. Verdicts
+- H1: SUPPORTED. The near-money median falls from 683 to 0.0 on grid A, and is 0.0 on the new grid.
+- H2: REFUTED. SN still returns s = 0 at 12 (grid A) and 8 (new grid) informative in-the-money points where LBR converges, with LBR relative errors from 0.05% to 3.9%. See section 6.
+- H3: SUPPORTED. SN's p99 falls from 1087 to 4.97 on grid A, and is 3.48 on the new grid.
+- H4: SUPPORTED. No bad outcomes for Brent or SN at any informative point.
+- H5: SUPPORTED. LBR's p99 on the new grid is 2.74, so the informative rule marks solvable problems off the grid it came from.
+- H6: SUPPORTED. 8 and 9 median iterations.
+
+## 6. Interpretation
+- **The cancellation fix works.** With c(s) evaluated to a few eps everywhere, SN is now limited by the problem's conditioning, as LBR is. Its p99 (3.5 to 5.0) is within a factor of 2.5 of LBR's (2.0 to 2.7), on a grid it was never run on.
+- **Why H2 failed.** All 20 misses are deep in the money, with a time value c - iota of only 0.4 to 1.2 eps max(F, K), below the 2-eps cutoff (SPEC 6.2, Study A2 amendment).
+  - That is less than an ulp of the price, yet the price still pins s. The time value is so sensitive to s (elasticity ~ x^2 / s^2) that an O(1) relative error in it moves s by under 4%.
+  - Study A's informative rule (kappa eps < 1) counts these points correctly; the cutoff does not. Any positive time value carries information about s; how much is set by conditioning, not by the price's rounding.
+  - The cutoff should be 0, as in LBR: solve whenever c exceeds the intrinsic value. That conclusion was drawn after seeing these results, so the change is tested as a post-hoc follow-up and confirmed on a freshly registered grid (section 9).
+- **The cost is real.** SN's median time rose about 40 to 55 times, to 220-300 us, because the extra-digit path triggers wherever max(F N, K N) > 4 c. That covers out-of-the-money options generally (a cancellation factor of about 6 is typical at x = -1), not only near the money. LBR gets comparable accuracy in 7 us by evaluating a normalized Black function designed not to cancel.
+
+## 7. Limitations and threats to validity
+- Both grids use F = 100 or 37.5 and the same option types and grid shape. Neither covers extreme F/K scaling such as F = 1e-6 or 1e6.
+- The study's timings come from 5 repeats with other work running on the machine. A separate quiet re-measurement on grid A's 1954 informative points (median of 3 solves per point) confirms them: SN median 5.5 us before against 223 us after, mean 7.4 against 568 us. One machine only.
+- H2's follow-up was designed after seeing H2 fail. Only its registered confirmation (section 9) counts as evidence.
+
+## 8. Next questions
+- Replace the extra-digit path with Jaeckel's (2015) normalized Black function and its expansions, once their equations are checked against the paper (SPEC 17), to recover LBR-like speed.
+- Confirm on grids with extreme F/K scaling.
