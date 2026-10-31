@@ -9,7 +9,7 @@
     }
   },
   "environment": {
-    "commit": "0a1566dd2f4164e051374200e345a921877ed024",
+    "commit": "a4bbd98f1982ba3c3a19c1b26a434754d265e4f6",
     "dirty": false,
     "python": "3.12.15",
     "platform": "macOS-26.6-arm64-arm-64bit",
@@ -19,7 +19,7 @@
       "scipy": "1.18.1",
       "mpmath": "1.4.1"
     },
-    "timestamp_utc": "2026-10-31T01:27:36+00:00"
+    "timestamp_utc": "2026-10-31T01:40:03+00:00"
   },
   "bsm_vs_mpmath": {
     "cases": 288,
@@ -41,16 +41,16 @@
     "cases": 520,
     "safeguarded_newton": {
       "reasons": {
-        "AT_LOWER_BOUND": 213,
-        "CONVERGED": 307
+        "AT_LOWER_BOUND": 212,
+        "CONVERGED": 308
       },
       "worst_error_in_rounding_units": 1.1071015925496925,
       "value_returned_without_convergence": 0
     },
     "brent": {
       "reasons": {
-        "AT_LOWER_BOUND": 213,
-        "CONVERGED": 307
+        "AT_LOWER_BOUND": 212,
+        "CONVERGED": 308
       },
       "worst_error_in_rounding_units": 1.0127017237741816,
       "value_returned_without_convergence": 0
