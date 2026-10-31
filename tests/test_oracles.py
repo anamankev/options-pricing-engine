@@ -28,7 +28,7 @@ pytestmark = pytest.mark.oracle
 
 CONFIG = Path(__file__).resolve().parents[1] / "experiments/configs/quantlib_reconciliation.toml"
 
-# Justified in docs/notes/phase_1_quantlib_reconciliation.md (1800-case run at commit 8a00ed2).
+# Justified in docs/notes/phase_1_quantlib_reconciliation.md (1800-case run at commit df6c321).
 # The two closed forms agree to relative 1e-11 (median observed 2e-16 to 1e-15) except in far
 # tails (|d1| >= 3.2), where QuantLib loses relative precision: scored against mpmath it is up to
 # 100% off there, while ours stays within 2.5e-10. In those cases the absolute difference is at

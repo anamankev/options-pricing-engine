@@ -1,5 +1,5 @@
 # Performance benchmarks (SPEC 12).
-# Design and hypotheses: docs/notes/benchmarks.md (registered at 3e4d134, before this file existed).
+# Design and hypotheses: docs/notes/benchmarks.md (registered at 7e727fb, before this file existed).
 
 warmup = 3  # untimed calls before each measurement
 

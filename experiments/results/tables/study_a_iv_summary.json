@@ -58,7 +58,7 @@
     }
   },
   "environment": {
-    "commit": "ef8824d7c6fdabe9b8dc00a8b7c558a8254b69e6",
+    "commit": "67539c54f636a574db674f794e53f306c1c61736",
     "dirty": false,
     "python": "3.12.15",
     "platform": "macOS-26.6-arm64-arm-64bit",

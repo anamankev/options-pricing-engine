@@ -1,5 +1,5 @@
 # Study B: convergence of binomial trees (SPEC 11).
-# Design and hypotheses: docs/notes/study_b.md (registered at 35cbed5, before this file existed).
+# Design and hypotheses: docs/notes/study_b.md (registered at abc9ca2, before this file existed).
 
 reference_scheme = [20, 60, 1e-14]  # QdFpTanhSinhIterationScheme(m, n, eps)
 check_scheme = [40, 100, 1e-15]  # gate 1 comparison

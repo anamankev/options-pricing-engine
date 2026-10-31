@@ -1,6 +1,6 @@
 # Study B: convergence of binomial trees for European and American options
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `35cbed5`, before the study code existed. Results from commit `17c1e37`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `abc9ca2`, before the study code existed. Results from commit `71a75d9`.
 
 ## 1. Question
 (SPEC 11.) What convergence order and what error-versus-runtime trade-off do CRR, Leisen-Reimer (LR), BBS and BBSR achieve for European and American options? Do they reproduce published benchmarks? The answer tells a desk which tree to use for American options, and at what step count, for a given error budget.
@@ -56,7 +56,7 @@ Error e_N = V_N - V_ref. An "order fit" is the least-squares slope of log10|e_N|
 - No randomness. Config: `experiments/configs/study_b_trees.toml`. Outputs under `experiments/results/` with commit, dirty flag, library versions and platform.
 
 ## 4. Results
-- Code: commit `17c1e37`, clean tree. Command: `python -m experiments.study_b_trees --config experiments/configs/study_b_trees.toml`. The error sweeps run in 9 parallel processes; the timings run alone.
+- Code: commit `71a75d9`, clean tree. Command: `python -m experiments.study_b_trees --config experiments/configs/study_b_trees.toml`. The error sweeps run in 9 parallel processes; the timings run alone.
 - Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, matplotlib 3.11.2, QuantLib 1.44.
 - Outputs:
   - tables in `experiments/results/tables/`: `study_b_errors.csv` (every tree price and error), `study_b_orders.csv` (order fits) and `study_b_summary.json` (gates, Ju-Zhong table, timings, B4 pairs, verdicts);

@@ -1,6 +1,6 @@
 # Phase 6: performance benchmarks
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `3e4d134`, before the benchmark code existed. Results from commit `807f905`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `7e727fb`, before the benchmark code existed. Results from commit `7d3d864`.
 
 ## 1. Question
 (SPEC 12.) How fast is the library on one machine? Specifically: the latency and throughput of vectorized BSM at batch sizes 1, 1e3 and 1e6; tree runtime against step count; Monte Carlo cost per path. Does each scale as its algorithm predicts? A user sizing a batch or choosing N needs these numbers, with their spread and the environment that produced them.
@@ -25,13 +25,13 @@ Status: COMPLETE. Sections 1 to 3 registered at commit `3e4d134`, before the ben
 - Non-claim (SPEC 15): one machine's benchmarks are not evidence of production performance.
 
 ## 4. Results
-- Code: commit `807f905`, clean tree. Command: `python -m experiments.benchmarks --config experiments/configs/benchmarks.toml` (about 5 s).
+- Code: commit `7d3d864`, clean tree. Command: `python -m experiments.benchmarks --config experiments/configs/benchmarks.toml` (about 5 s).
 - Environment:
   - hardware and OS: Apple M5, 10 logical CPUs, macOS 26.6 arm64;
   - software: Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, matplotlib 3.11.2, BLAS Accelerate;
   - thread variables (OMP, OpenBLAS, MKL, vecLib, numexpr): all unset.
 - Outputs: `experiments/results/tables/benchmarks.csv`, `benchmarks_summary.json` and `experiments/results/figures/benchmarks.png`.
-- History: a first run at `8a25fde` gave the same verdicts and numbers within a few percent. The figure then gained slope guides (`807f905`), and the run reported here is from that commit.
+- History: a first run at `1680145` gave the same verdicts and numbers within a few percent. The figure then gained slope guides (`7d3d864`), and the run reported here is from that commit.
 
 Vectorized BSM, call (median, with IQR):
 

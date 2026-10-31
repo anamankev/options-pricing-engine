@@ -28,7 +28,7 @@ Does the library price European options and their Greeks under BSM correctly, to
 - Rounding model behind every price tolerance: absolute error <= 64 eps x scale, with scale = D F N(theta d1) + D K N(theta d2) + D F phi(d1) (1 + |d1| + |d2|).
 
 ## 4. Results
-- Commits: `3ae7571` (errors, validation) to `7de3dd3` (named tolerances). CI at `c4c5d32`: fast checks on Python 3.11 and 3.12, and the full suite with QuantLib on Linux, all passed. On 3.11 pip resolved NumPy 2.4.6 and scipy-stubs 1.17.1.5; on 3.12, NumPy 2.5.4 and 1.18.1.1.
+- Commits: `e8c7dff` (errors, validation) to `47716e5` (named tolerances). CI at `12776f5`: fast checks on Python 3.11 and 3.12, and the full suite with QuantLib on Linux, all passed. On 3.11 pip resolved NumPy 2.4.6 and scipy-stubs 1.17.1.5; on 3.12, NumPy 2.5.4 and 1.18.1.1.
 - Prices against mpmath at 50 digits (144 markets x call and put): worst error 0.76 eps x scale, against a budget of 64.
 - Greeks against finite differences (72 cases x 2 types): worst relative error 2e-9 (theta) to 5e-8 (vega), against a tolerance of 1e-6.
 - Properties: 8 Hypothesis properties held on 20,000 random markets each (160,000 in total) in a one-off stress run, with warnings as errors; CI runs 100 per property.

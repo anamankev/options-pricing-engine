@@ -15,7 +15,7 @@ Can someone with a fresh clone, following only the README, reproduce every check
 - Paths: `git grep -nIE '/Users/|kelvinanaman|/home/|C:\\\\'` over tracked files.
 
 ## 4. Results
-- Commits: `bacd3e7` to `e44f151` (7 units). CI: push run 41070958691 (checks on 3.11 and 3.12: success); manual run 41071119106 (checks and full: success).
+- Commits: `b1c840b` to `cb7f7c0` (5 units). CI: push run 41070958691 (checks on 3.11 and 3.12: success); manual run 41071119106 (checks and full: success).
 - Environment, development Mac (macOS, arm64): Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, matplotlib 3.11.2, mpmath 1.4.1, pytest 9.2.0, Hypothesis 6.170.13, Ruff 0.17.3, mypy 2.4.1, QuantLib 1.44, py_lets_be_rational 1.1.2, vollib 1.0.11.
 - On Python 3.11, pip resolves NumPy 2.4.6 and SciPy 1.17.1, because NumPy 2.5 and SciPy 1.18 require Python 3.12 or later.
 - H1: all four checks passed in every environment listed in §3; 17 tests, of which 15 covered the local editor tooling and are kept outside the repository with it.

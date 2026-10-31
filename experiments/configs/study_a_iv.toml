@@ -1,5 +1,5 @@
 # Study A: implied-volatility solver accuracy, robustness and cost (SPEC 10).
-# Design and hypotheses: docs/notes/study_a.md (registered at eb4f27f, before this file existed).
+# Design and hypotheses: docs/notes/study_a.md (registered at f814c1a, before this file existed).
 
 F = 100.0
 T = 1.0  # so sigma = s

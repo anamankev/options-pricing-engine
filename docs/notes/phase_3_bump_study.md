@@ -1,6 +1,6 @@
 # Phase 3: finite-difference bump study
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `a3815e0`, before the experiment code existed. Results from commit `06d6b36`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `64b9131`, before the experiment code existed. Results from commit `214cd6c`.
 
 ## 1. Question
 How does the error of a finite-difference Greek depend on the bump size? Does the optimal bump match the theoretical prediction of SPEC 7: eta about eps^(1/3) = 6.1e-6 for first derivatives and eps^(1/4) = 1.2e-4 for second derivatives? A desk that computes Greeks by bumping a pricer has to choose this bump. Too large a bump gives truncation error, too small a bump amplifies rounding. This study measures where the trade-off sits.
@@ -38,10 +38,10 @@ In log-log axes this traces a V. The right branch (truncation) has slope +2. The
 - No randomness. Config: `experiments/configs/greek_bumps.toml`. Outputs: tables and figures under `experiments/results/`, with commit, dirty flag, library versions and platform.
 
 ## 4. Results
-- Code: commit `06d6b36`, clean tree. Command: `python -m experiments.greek_bumps --config experiments/configs/greek_bumps.toml` (under 1 s).
+- Code: commit `214cd6c`, clean tree. Command: `python -m experiments.greek_bumps --config experiments/configs/greek_bumps.toml` (under 1 s).
 - Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, matplotlib 3.11.2.
 - Outputs: `experiments/results/tables/greek_bumps.csv`, `greek_bumps_summary.json`. Figures in `experiments/results/figures/`: `greek_bumps_vshape.png`, `greek_bumps_surface_3d.png`, `greek_bumps_surface_heatmap.png`, `greek_bumps_one_sided.png`.
-- History: the script was committed and run at `23ca365`. Reviewing the figures found overlapping labels, which were fixed in `06d6b36`. The numbers are identical between the two runs.
+- History: the script was committed and run at `a15a0ba`. Reviewing the figures found overlapping labels, which were fixed in `214cd6c`. The numbers are identical between the two runs.
 
 | Greek | Right slope | Left slope | Optimal eta (observed) | SPEC prediction | Best relative error |
 |---|---|---|---|---|---|

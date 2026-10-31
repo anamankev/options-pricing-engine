@@ -1,6 +1,6 @@
 # Study A: implied-volatility solver accuracy, robustness and cost
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `eb4f27f`, before the study code existed. Results from commit `ef8824d`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `f814c1a`, before the study code existed. Results from commit `67539c5`.
 
 ## 1. Question
 (SPEC 10.) Across the (log-moneyness, total-volatility) plane, how do Brent, naive Newton and safeguarded Newton compare with Jaeckel's Let's Be Rational (LBR) in accuracy, robustness and cost, when accuracy is measured against what the problem's conditioning allows? The answer tells a desk which solver it can trust, and where, when it backs volatilities out of prices.
@@ -46,15 +46,15 @@ Definitions are in section 3. "Well posed" means the float64 target price c sati
 - No randomness. Config: `experiments/configs/study_a_iv.toml`. Outputs under `experiments/results/` with commit, dirty flag, library versions and platform.
 
 ## 4. Results
-- Code: commit `ef8824d`, clean tree. Command: `python -m experiments.study_a_iv --config experiments/configs/study_a_iv.toml` (about 6 s, including 50 timed repeats per point and solver).
+- Code: commit `67539c5`, clean tree. Command: `python -m experiments.study_a_iv --config experiments/configs/study_a_iv.toml` (about 6 s, including 50 timed repeats per point and solver).
 - Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, mpmath 1.4.1, matplotlib 3.11.2, lets_be_rational 1.1.2.
 - Outputs:
   - tables: `experiments/results/tables/study_a_iv.csv` (5880 rows) and `study_a_iv_summary.json`;
   - figures in `experiments/results/figures/`: `study_a_e_ulp.png`, `study_a_e_norm.png`, `study_a_e_norm_3d.png`, `study_a_outcomes.png`, `study_a_iterations.png`.
-- History: the script was committed at `11383e4` and first run there. Three later commits changed only analysis and plotting, not the solver or truth code:
-  - `384ab03` added the post-hoc analysis described below;
-  - `d6241b6` fixed a verdict bug: a median of exactly 0.0 was treated as missing (`value or inf`), which wrongly refuted post-hoc A5;
-  - `26119f0` and `ef8824d` corrected the figures (uninformative points were dominating the colour scale) and handled empty regions.
+- History: the script was committed at `9a9f2f5` and first run there. Three later commits changed only analysis and plotting, not the solver or truth code:
+  - `9226224` added the post-hoc analysis described below;
+  - `32bbf76` fixed a verdict bug: a median of exactly 0.0 was treated as missing (`value or inf`), which wrongly refuted post-hoc A5;
+  - `fcec7de` and `67539c5` corrected the figures (uninformative points were dominating the colour scale) and handled empty regions.
 
   The registered verdicts are identical in every run.
 

@@ -1,6 +1,6 @@
 # Phase 2: Monte Carlo interval coverage, bias and error scaling
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `fb102e0`, before the experiment code existed. Results from commit `f5c0d9b`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `59d0221`, before the experiment code existed. Results from commit `7cf9ed3`.
 
 ## 1. Question
 Do the Monte Carlo estimators of `pricing.monte_carlo` (plain, antithetic, control variate with an independent pilot) give unbiased estimates and 95% intervals that contain the true price 95% of the time? Where do the normal-approximation intervals fail, and how much do the variance-reduction methods save at equal cost? The answers decide how far the intervals can be trusted (SPEC 5.1, 5.5).
@@ -30,7 +30,7 @@ With R = 2000 replications per cell, the binomial standard error of an empirical
 - Config: `experiments/configs/mc_coverage.toml`. Outputs: `experiments/results/tables/mc_coverage.csv` and `mc_coverage_summary.json`, recording commit, dirty flag, library versions and platform.
 
 ## 4. Results
-- Code: commit `f5c0d9b`, clean tree. Command: `python -m experiments.mc_coverage --config experiments/configs/mc_coverage.toml` (21 s).
+- Code: commit `7cf9ed3`, clean tree. Command: `python -m experiments.mc_coverage --config experiments/configs/mc_coverage.toml` (21 s).
 - Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1.
 - Outputs: `experiments/results/tables/mc_coverage.csv` (36 cells) and `mc_coverage_summary.json` (cells, fits, VRFs, check outcomes).
 

@@ -23,7 +23,7 @@ Do the trees (CRR, LR, BBS, BBSR) and the Monte Carlo estimators price correctly
   | `test_mc_coverage_helpers.py` | 3 | Experiment helpers |
 
 ## 4. Results
-- Commits: `2c0b63c` (CRR) to `d99fec7` (coverage results).
+- Commits: `c31c778` (CRR) to `80e2c0d` (coverage results).
 - Tree convergence on R1 and R2 (European), against BSM:
   - CRR: N |error| <= 0.4 for N <= 1001, changing sign between N = 1000 and 1001 (the odd/even oscillation of SPEC 4.5).
   - LR: N^2 x error = -0.036 (R1) and -0.151 (R2), constant from N = 101 to 801, i.e. O(1/N^2) and monotone.
@@ -46,7 +46,7 @@ Diagnoses and decisions:
 
 ## 5. Verdicts
 - G1: SUPPORTED.
-- G2: SUPPORTED (registered at `fb102e0`, results at `f5c0d9b`).
+- G2: SUPPORTED (registered at `59d0221`, results at `7cf9ed3`).
 - G3: SUPPORTED.
 
 ## 6. Interpretation

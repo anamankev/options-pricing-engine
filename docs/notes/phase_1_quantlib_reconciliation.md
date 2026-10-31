@@ -1,6 +1,6 @@
 # Phase 1: QuantLib reconciliation of European prices and Greeks
 
-Status: COMPLETE. Sections 1 to 3 registered at commit `c53fe79`, before the reconciliation code existed. Results from commit `8a00ed2`.
+Status: COMPLETE. Sections 1 to 3 registered at commit `c10ab40`, before the reconciliation code existed. Results from commit `df6c321`.
 
 ## 1. Question
 Do our closed-form BSM prices and Greeks (`pricing.black_scholes`) agree with QuantLib's independent implementation to the precision two double-precision closed forms should reach? Where they differ, is the cause numerical conditioning or a formula, unit or convention error? The answer decides the oracle-test tolerance (SPEC 8.1) and the status of R1 to R3 (SPEC 9.1).
@@ -22,10 +22,10 @@ Do our closed-form BSM prices and Greeks (`pricing.black_scholes`) agree with Qu
 - Decision rule: if H1 and H2 hold, the oracle test asserts relative 1e-11. Otherwise the tolerance is set only after a recorded diagnosis, never loosened to fit.
 
 ## 4. Results
-- Code: commit `8a00ed2`, clean tree. Command: `python -m experiments.quantlib_reconciliation --config experiments/configs/quantlib_reconciliation.toml`.
+- Code: commit `df6c321`, clean tree. Command: `python -m experiments.quantlib_reconciliation --config experiments/configs/quantlib_reconciliation.toml`.
 - Environment: macOS 26.6 arm64, Python 3.12.15, NumPy 2.5.4, SciPy 1.18.1, QuantLib 1.44, mpmath 1.4.1.
 - Outputs: `experiments/results/tables/quantlib_reconciliation.csv` (1800 rows) and `quantlib_reconciliation_summary.json`.
-- History: the first run, at `441cea7`, crashed while printing its summary (an infinite relative error could not be formatted) and recorded `dirty: true` because it checked git status after writing its own output. Both were fixed in `8a00ed2` before the run reported here; the case data were the same.
+- History: the first run, at `cb19df4`, crashed while printing its summary (an infinite relative error could not be formatted) and recorded `dirty: true` because it checked git status after writing its own output. Both were fixed in `df6c321` before the run reported here; the case data were the same.
 
 Relative error against QuantLib (1800 cases):
 
